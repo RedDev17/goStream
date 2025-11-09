@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>goStream – WebRTC Sync</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Arial,sans-serif;background:#111;color:#fff}
+  header{text-align:center;padding:2rem}
+  h1{font-size:2.8rem}
+  .main{max-width:900px;margin:auto;padding:1rem}
+  #player{margin-bottom:1rem;border-radius:12px;overflow:hidden}
+  .controls{display:flex;gap:1rem;justify-content:center;margin:1rem 0}
+  button{padding:.8rem 1.6rem;font-size:1rem;border:none;border-radius:8px;
+         background:#ff4757;cursor:pointer;color:#fff}
+  button:nth-child(2){background:#1e90ff}
+  button:nth-child(3){background:#2ed573}
+  button:hover{opacity:.9}
+  #status{text-align:center;padding:.6rem;background:#333;border-radius:8px}
+  #room{margin:1rem auto;width:300px}
+  input{width:100%;padding:.6rem;font-size:1rem;border-radius:6px;border:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>goStream</h1>
+  <p>WebRTC-powered shared video control</p>
+</header>
+
+<div class="main">
+  <div id="room">
+    <input type="text" id="roomId" placeholder="Enter room name (e.g. myparty)" autocomplete="off">
+    <button onclick="joinRoom()">Join / Create Room</button>
+  </div>
+
+  <div id="player"></div>
+
+  <div class="controls">
+    <button onclick="sendControl('play')">Play</button>
+    <button onclick="sendControl('pause')">Pause</button>
+    <button onclick="seekPrompt()">Jump To</button>
+  </div>
+
+  <div id="status">Status: Not connected</div>
+</div>
+
+<!-- PeerJS (public broker) -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<!-- YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+/* ---------- GLOBAL VARS ---------- */
+let peer, conn, player, myId, roomName;
+const peers = new Set();               // keep track of connected peers
+const statusEl = document.getElementById('status');
+
+/* ---------- PEERJS SETUP ---------- */
+function initPeer() {
+  peer = new Peer();                     // auto-generates a random ID
+  peer.on('open', id => {
+    myId = id;
+    status('My ID: ' + id);
+  });
+
+  // Incoming connection (someone else joins)
+  peer.on('connection', incoming => {
+    if (peers.has(incoming.peer)) return;
+    setupConn(incoming);
+  });
+
+  peer.on('error', err => console.error(err));
+}
+
+/* ---------- JOIN / CREATE ROOM ---------- */
+function joinRoom() {
+  roomName = document.getElementById('roomId').value.trim();
+  if (!roomName) return alert('Enter a room name');
+  document.getElementById('room').style.display = 'none';
+  initPeer();
+}
+
+/* ---------- CONNECT TO OTHER PEERS ---------- */
+function connectToPeer(peerId) {
+  if (peers.has(peerId) || peerId === myId) return;
+  const c = peer.connect(peerId);
+  setupConn(c);
+}
+
+/* ---------- DATA CHANNEL HANDLER ---------- */
+function setupConn(c) {
+  peers.add(c.peer);
+  conn = c;                     // keep the latest one as "active"
+  status(`Connected to ${c.peer}`);
+
+  c.on('open', () => {
+    // Tell the new peer our current video state
+    if (player) sendState();
+  });
+
+  c.on('data', data => {
+    // data = {action:'play'|'pause'|'seek', time?:number}
+    if (!player) return;
+    if (data.action === 'play') player.playVideo();
+    else if (data.action === 'pause') player.pauseVideo();
+    else if (data.action === 'seek' && typeof data.time === 'number')
+      player.seekTo(data.time, true);
+  });
+
+  c.on('close', () => {
+    peers.delete(c.peer);
+    status(`Disconnected from ${c.peer}`);
+  });
+}
+
+/* ---------- SEND CONTROL TO ALL PEERS ---------- */
+function broadcast(obj) {
+  peers.forEach(p => {
+    try {
+      const c = peer.connections[p][0];
+      if (c && c.open) c.send(obj);
+    } catch(e){ }
+  });
+}
+
+/* ---------- UI BUTTONS ---------- */
+function sendControl(action) {
+  if (!player) return;
+  const payload = {action};
+  if (action === 'play') player.playVideo();
+  else if (action === 'pause') player.pauseVideo();
+  broadcast(payload);
+  status(`Sent ${action}`);
+  setTimeout(() => status('Connected'), 1500);
+}
+
+function seekPrompt() {
+  const t = prompt('Go to time (seconds):');
+  if (t === null || isNaN(t)) return;
+  const time = parseFloat(t);
+  if (!player) return;
+  player.seekTo(time, true);
+  broadcast({action:'seek', time});
+  status(`Seek to ${time}s`);
+  setTimeout(() => status('Connected'), 1500);
+}
+
+/* ---------- SEND CURRENT STATE (on new peer) ---------- */
+function sendState() {
+  if (!player) return;
+  const state = player.getPlayerState(); // 1=playing, 2=paused, etc.
+  const time = player.getCurrentTime();
+  const payload = {
+    action: state === 1 ? 'play' : (state === 2 ? 'pause' : 'pause'),
+    time: Math.floor(time)
+  };
+  broadcast(payload);
+}
+
+/* ---------- YOUTUBE PLAYER ---------- */
+let ytReady = false;
+function onYouTubeIframeAPIReady() {
+  ytReady = true;
+  createPlayer();
+}
+
+function createPlayer() {
+  player = new YT.Player('player', {
+    height: '480',
+    width: '100%',
+    videoId: 'SsN4gl_wV_8',               // <-- change video here
+    playerVars: { rel: 0, modestbranding: 1 },
+    events: {
+      'onReady': onPlayerReady,
+      'onStateChange': onPlayerStateChange
+    }
+  });
+}
+
+function onPlayerReady() {
+  status('Player ready');
+  // If we already have peers, sync them now
+  if (peers.size) sendState();
+}
+
+function onPlayerStateChange(e) {
+  // Auto-sync when user plays/pauses locally
+  if (e.data === YT.PlayerState.PLAYING) sendControl('play');
+  else if (e.data === YT.PlayerState.PAUSED) sendControl('pause');
+}
+
+/* ---------- ROOM DISCOVERY (very simple) ---------- */
+// We use a **shared "room server"** – a tiny static JSON file on GitHub Pages / any host
+// that maps roomName → array of peer IDs.  Every 3 seconds we poll it.
+const DISCOVERY_URL = 'https://raw.githubusercontent.com/yourusername/gostream-rooms/main/rooms.json';
+async function discoverPeers() {
+  if (!roomName) return;
+  try {
+    const res = await fetch(DISCOVERY_URL + '?t=' + Date.now());
+    const data = await res.json();
+    const ids = data[roomName] || [];
+    ids.forEach(id => connectToPeer(id));
+    // Register ourselves
+    if (myId && !ids.includes(myId)) {
+      data[roomName] = [...new Set([...ids, myId])];
+      // In a real project you would POST to a server; here we just log.
+      console.log('Register yourself by editing the JSON file:', data);
+    }
+  } catch(e){ console.warn('Discovery failed', e); }
+}
+setInterval(discoverPeers, 4000);
+
+/* ---------- HELPER ---------- */
+function status(txt){ statusEl.textContent = 'Status: ' + txt; }
+</script>
+</body>
+</html>
