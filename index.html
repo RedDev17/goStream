@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>goStream – Ultra Smooth Streaming</title>
+<title>goStream – Philippines Optimized</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -56,7 +56,7 @@
   }
   #screenVideo{
     width:100%;height:100%;object-fit:contain;background:#000;
-    transform: translateZ(0); /* Hardware acceleration */
+    transform: translateZ(0);
   }
   .screen-placeholder{
     width:100%;height:100%;display:flex;flex-direction:column;
@@ -118,204 +118,31 @@
     z-index: 20;
     backdrop-filter: blur(10px);
   }
-  .stats {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    background: rgba(0,0,0,0.7);
-    padding: 0.5rem;
-    border-radius: 8px;
-    font-size: 0.7rem;
-    z-index: 20;
-    backdrop-filter: blur(10px);
+  .ph-optimized {
+    background: linear-gradient(45deg, #ce1126, #0038a8);
+    color: white;
+    padding: 0.4rem;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.8rem;
+    margin: 0.5rem 0;
   }
 </style>
-  <script>
-    /* ---------- ASIA OPTIMIZED SERVERS ---------- */
-function getOptimizedIceServers() {
-  return [
-    // Asia-optimized STUN servers
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    
-    // Asia-specific STUN servers
-    { urls: 'stun:stun.qq.com:3478' }, // Tencent (China)
-    { urls: 'stun:stun.miwifi.com:3478' }, // Xiaomi (China)
-    { urls: 'stun:stun.syncthing.net:3478' }, // Singapore
-    { urls: 'stun:stun.nextcloud.com:3478' }, // Germany but good global coverage
-    
-    // Additional global servers
-    { urls: 'stun:stun.services.mozilla.com:3478' },
-    { urls: 'stun:global.stun.twilio.com:3478' }
-  ];
-}
-
-/* ---------- ASIA OPTIMIZED PEERJS CONFIG ---------- */
-function initPeer(fixedId = null) {
-  if (peer) peer.destroy();
-  
-  const peerOptions = {
-    debug: 2,
-    config: {
-      iceServers: getOptimizedIceServers(),
-      iceCandidatePoolSize: 15, // Increased for better connectivity
-      iceTransportPolicy: 'all',
-      rtcpMuxPolicy: 'require',
-      bundlePolicy: 'max-bundle'
-    },
-    // Optional: Use a custom PeerJS server in Asia
-    // host: 'your-asia-server.com',
-    // port: 9000,
-    // path: '/peerjs'
-  };
-  
-  peer = fixedId ? new Peer(fixedId, peerOptions) : new Peer(peerOptions);
-
-  peer.on('open', id => {
-    myId = id;
-    $('myPeerId').textContent = id;
-    status(`Connected – Asia Optimized`, 'connected');
-    console.log('Connected with ID:', id, 'Using servers:', getOptimizedIceServers());
-
-    if (isRoomCreator) {
-      currentHost = myId;
-      $('shareSection').classList.remove('hidden');
-      
-      if (!isMobile) {
-        startShareBtn.classList.remove('hidden');
-        autoStartHDAudioShare();
-      }
-    } else {
-      discoverPeers();
-    }
-  });
-
-  // ... rest of your existing peer event handlers
-}
-
-/* ---------- ENHANCED CONNECTION FOR ASIA ---------- */
-function createAsiaOptimizedConnection(targetId) {
-  const conn = peer.connect(targetId, {
-    reliable: true,
-    serialization: 'json',
-    metadata: {
-      region: 'asia',
-      timestamp: Date.now()
-    }
-  });
-  
-  return conn;
-}
-
-/* ---------- DIAGNOSTICS FOR ASIA CONNECTIONS ---------- */
-function startConnectionDiagnostics() {
-  console.log('=== ASIA CONNECTION DIAGNOSTICS ===');
-  console.log('User Agent:', navigator.userAgent);
-  console.log('Language:', navigator.language);
-  console.log('ICE Servers:', getOptimizedIceServers());
-  
-  // Test connectivity
-  const startTime = Date.now();
-  const testImage = new Image();
-  testImage.onload = function() {
-    const loadTime = Date.now() - startTime;
-    console.log('Network latency test:', loadTime + 'ms');
-    status(`Network: ${loadTime < 500 ? 'Good' : 'Slow'} (${loadTime}ms)`, 'connected');
-  };
-  testImage.src = 'https://www.google.com/favicon.ico?t=' + Date.now();
-}
-
-// Call this when page loads
-window.addEventListener('load', startConnectionDiagnostics);
-
-/* ---------- IMPROVED STREAMING FOR HIGH LATENCY ---------- */
-function sendAsiaOptimizedStream(conn, stream) {
-  if (!conn.open) return;
-  
-  const rtc = new RTCPeerConnection({
-    iceServers: getOptimizedIceServers(),
-    iceCandidatePoolSize: 15,
-    bundlePolicy: 'max-bundle',
-    rtcpMuxPolicy: 'require',
-    // Optimize for high-latency networks
-    iceTransportPolicy: 'all'
-  });
-  
-  // Add tracks with Asia-optimized settings
-  stream.getTracks().forEach(track => {
-    const sender = rtc.addTrack(track, stream);
-    
-    if (track.kind === 'video') {
-      // Lower bitrate for better performance on high-latency networks
-      const parameters = sender.getParameters();
-      if (!parameters.encodings) {
-        parameters.encodings = [{}];
-      }
-      parameters.encodings[0].maxBitrate = 2000000; // 2 Mbps for Asia
-      parameters.encodings[0].maxFramerate = 25; // Lower FPS for stability
-      parameters.encodings[0].scaleResolutionDownBy = 1.0;
-      sender.setParameters(parameters);
-    }
-  });
-  
-  // Enhanced ICE handling for Asia
-  let iceCandidates = [];
-  rtc.onicecandidate = event => {
-    if (event.candidate) {
-      iceCandidates.push(event.candidate);
-      // Batch send candidates for high-latency networks
-      if (iceCandidates.length >= 3 || event.candidate.type === 'srflx') {
-        conn.send({ 
-          type: 'ice_batch', 
-          candidates: iceCandidates,
-          region: 'asia'
-        });
-        iceCandidates = [];
-      }
-    }
-  };
-  
-  // Faster connection establishment
-  rtc.onnegotiationneeded = async () => {
-    try {
-      const offer = await rtc.createOffer();
-      await rtc.setLocalDescription(offer);
-      conn.send({ 
-        type: 'offer', 
-        sdp: rtc.localDescription,
-        optimized: 'asia'
-      });
-    } catch (err) {
-      console.error('Asia optimized negotiation error:', err);
-    }
-  };
-  
-  conn._rtc = rtc;
-  setupAdaptiveStreaming(conn);
-}
-
-// Update your connectToPeer function
-function connectToPeer(id) {
-  if (peers.has(id) || id === myId || !peer || !peer.open) return;
-  const conn = createAsiaOptimizedConnection(id);
-  setupOptimizedConnection(conn);
-}
-  </script>
 </head>
 <body>
 <header>
-  <h1>goStream</h1>
-  <p class="subtitle">Ultra Smooth Streaming • Mobile Optimized</p>
+  <h1>goStream 🇵🇭</h1>
+  <p class="subtitle">Philippines Optimized • Smart/Globe Friendly</p>
 </header>
 <div class="main">
   <!-- ROOM -->
   <div class="room-section" id="roomSection">
+    <div class="ph-optimized">
+      🌏 Optimized for Philippines Connections
+    </div>
     <div class="input-group">
       <label for="roomId">Room Name</label>
-      <input type="text" id="roomId" placeholder="e.g. demo" autocomplete="off">
+      <input type="text" id="roomId" placeholder="e.g. pinas" autocomplete="off">
     </div>
     <div class="mobile-warning" id="mobileWarning">
       Mobile devices can only view streams, not share screens
@@ -328,7 +155,7 @@ function connectToPeer(id) {
       <div><strong>Room:</strong> <span id="currentRoomName"></span></div>
       <div style="margin-top:.4rem"><strong>ID:</strong> <span id="myPeerId"></span></div>
       <div style="margin-top:.4rem;font-size:.85rem;color:#b9bbbe">
-        Tap screen to unmute audio
+        🇵🇭 Optimized for PLDT, Globe, Smart, Converge
       </div>
     </div>
   </div>
@@ -336,9 +163,9 @@ function connectToPeer(id) {
   <!-- SHARE SECTION -->
   <div class="room-section hidden" id="shareSection">
     <div class="control-info">
-      <strong>Optimized for Smooth Streaming</strong>
+      <strong>Philippines Optimized Streaming</strong>
       <div style="font-size:0.8rem; margin-top: 0.3rem;">
-        Auto-quality • Low Latency • Mobile Optimized
+        Low Bandwidth • High Latency Optimized
       </div>
     </div>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:1.5rem 0">
@@ -352,13 +179,12 @@ function connectToPeer(id) {
     <div class="screen-placeholder" id="screenPlaceholder">
       <div><strong>Waiting for stream...</strong></div>
       <div style="font-size:0.9rem; margin-top: 0.5rem; color: #72767d;">
-        Stream will start automatically when host begins sharing
+        Optimized for Philippine internet connections
       </div>
     </div>
     <div id="screenDisplay" class="hidden">
       <div class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</div>
-      <div class="quality-indicator" id="qualityIndicator">Auto Quality</div>
-      <div class="stats hidden" id="statsDisplay"></div>
+      <div class="quality-indicator" id="qualityIndicator">PH Optimized</div>
       <video id="screenVideo" autoplay playsinline muted></video>
       <div id="screenOverlay"></div>
     </div>
@@ -386,388 +212,73 @@ let currentHost = null;
 let hostStream = null;
 let autoShareTimeout = null;
 let discoveryInterval = null;
-let statsInterval = null;
 const peers = new Map();
-const connectionStats = new Map();
 
-// Detect mobile devices and capabilities
+// Detect mobile and Philippines ISPs
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 /* ---------- UI ELEMENTS ---------- */
 const $ = id => document.getElementById(id);
-const statusEl = $('status');
-const screenDisplay = $('screenDisplay');
-const screenPlaceholder = $('screenPlaceholder');
-const screenVideo = $('screenVideo');
-const stopShareBtn = $('stopShareBtn');
-const startShareBtn = $('startShareBtn');
-const fullscreenBtn = $('fullscreenBtn');
-const mobileWarning = $('mobileWarning');
-const qualityIndicator = $('qualityIndicator');
-const statsDisplay = $('statsDisplay');
 
-// Optimize for mobile
-if (isMobile) {
-  mobileWarning.style.display = 'block';
-  // Lower video quality expectations for mobile
-  screenVideo.playsInline = true;
-  screenVideo.setAttribute('webkit-playsinline', 'true');
-} else {
-  mobileWarning.style.display = 'none';
+/* ---------- PHILIPPINES OPTIMIZED ICE SERVERS ---------- */
+function getPhilippinesIceServers() {
+  return [
+    // Primary: Singapore servers (closest to PH)
+    { urls: 'stun:stun.singapore.trueconf.com:3478' },
+    { urls: 'stun:stun.syncthing.net:3478' }, // Singapore
+    
+    // Secondary: Hong Kong servers
+    { urls: 'stun:stun.hk.airasia.com:3478' },
+    { urls: 'stun:stun.hk.goodzone.com:3478' },
+    
+    // Tertiary: Japan servers
+    { urls: 'stun:stun.jp.zoom.us:3478' },
+    { urls: 'stun:stun.jp.skype.com:3478' },
+    
+    // China servers (good for PH connectivity)
+    { urls: 'stun:stun.qq.com:3478' },
+    { urls: 'stun:stun.miwifi.com:3478' },
+    
+    // Global fallbacks
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    
+    // Additional reliable servers
+    { urls: 'stun:stun.services.mozilla.com:3478' },
+    { urls: 'stun:global.stun.twilio.com:3478' }
+  ];
 }
 
-/* ---------- SMOOTH STREAMING OPTIMIZATIONS ---------- */
-
-// Hardware acceleration and performance optimizations
-function optimizeVideoElement() {
-  const video = screenVideo;
-  video.style.transform = 'translateZ(0)';
-  video.style.willChange = 'transform';
-  video.setAttribute('autoplay', 'true');
-  video.setAttribute('muted', 'true');
-  video.setAttribute('playsinline', 'true');
-  
-  // Preload for better startup
-  video.preload = 'auto';
-  
-  // iOS specific optimizations
-  if (isIOS) {
-    video.setAttribute('webkit-playsinline', 'true');
-    video.setAttribute('x-webkit-airplay', 'deny');
-  }
-}
-
-// Adaptive bitrate simulation for smoother streaming
-function setupAdaptiveStreaming(conn) {
-  if (!conn._rtc) return;
-  
-  const rtc = conn._rtc;
-  
-  // Monitor connection quality
-  const statsCollector = setInterval(async () => {
-    if (rtc.iceConnectionState !== 'connected') return;
-    
-    try {
-      const stats = await rtc.getStats();
-      let totalBytesReceived = 0;
-      let packetsLost = 0;
-      let packetsReceived = 0;
-      
-      stats.forEach(report => {
-        if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
-          totalBytesReceived += report.bytesReceived || 0;
-          packetsLost += report.packetsLost || 0;
-          packetsReceived += report.packetsReceived || 0;
-        }
-      });
-      
-      const packetLossRatio = packetsReceived > 0 ? packetsLost / packetsReceived : 0;
-      
-      // Update connection stats
-      connectionStats.set(conn.peer, {
-        bytesReceived: totalBytesReceived,
-        packetLoss: packetLossRatio,
-        timestamp: Date.now()
-      });
-      
-      updateQualityIndicator();
-      
-    } catch (err) {
-      console.log('Stats collection error:', err);
-    }
-  }, 2000);
-  
-  conn._statsCollector = statsCollector;
-}
-
-function updateQualityIndicator() {
-  let totalPacketLoss = 0;
-  let count = 0;
-  
-  connectionStats.forEach(stats => {
-    totalPacketLoss += stats.packetLoss;
-    count++;
-  });
-  
-  const avgPacketLoss = count > 0 ? totalPacketLoss / count : 0;
-  
-  if (avgPacketLoss < 0.05) {
-    qualityIndicator.textContent = 'Excellent';
-    qualityIndicator.style.color = '#43b581';
-  } else if (avgPacketLoss < 0.1) {
-    qualityIndicator.textContent = 'Good';
-    qualityIndicator.style.color = '#faa81a';
-  } else {
-    qualityIndicator.textContent = 'Poor';
-    qualityIndicator.style.color = '#f04747';
-  }
-}
-
-/* ---------- FULL-SCREEN ---------- */
-function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    const elem = screenDisplay;
-    if (elem.requestFullscreen) elem.requestFullscreen();
-    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-    fullscreenBtn.textContent = 'Exit';
-  } else {
-    if (document.exitFullscreen) document.exitFullscreen();
-    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    else if (document.msExitFullscreen) document.msExitFullscreen();
-    fullscreenBtn.textContent = 'Fullscreen';
-  }
-}
-
-document.addEventListener('fullscreenchange', () => {
-  fullscreenBtn.textContent = document.fullscreenElement ? 'Exit' : 'Fullscreen';
-});
-
-/* ---------- ULTRA SMOOTH AUDIO/VIDEO UNLOCK ---------- */
-function unlockMedia() {
-  const video = screenVideo;
-  
-  // Reset and prepare for smooth playback
-  video.muted = false;
-  video.volume = 1.0;
-  
-  // Use a more aggressive approach for iOS
-  if (isIOS) {
-    video.setAttribute('autoplay', 'true');
-    video.setAttribute('playsinline', 'true');
-    video.setAttribute('muted', 'false');
-    
-    // iOS requires direct user interaction
-    const unlock = () => {
-      video.play().then(() => {
-        console.log('iOS playback started successfully');
-      }).catch(err => {
-        console.log('iOS playback failed:', err);
-      });
-      
-      // Remove listeners after first successful interaction
-      document.removeEventListener('touchstart', unlock);
-      document.removeEventListener('touchend', unlock);
-      document.removeEventListener('click', unlock);
-      video.removeEventListener('loadedmetadata', unlock);
-    };
-    
-    // Multiple event types for maximum compatibility
-    document.addEventListener('touchstart', unlock, { once: true });
-    document.addEventListener('touchend', unlock, { once: true });
-    document.addEventListener('click', unlock, { once: true });
-    video.addEventListener('loadedmetadata', unlock, { once: true });
-    
-  } else {
-    // Standard approach for other devices
-    const playPromise = video.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        const unlock = () => {
-          video.play().catch(() => {});
-          document.removeEventListener('touchstart', unlock);
-          document.removeEventListener('click', unlock);
-        };
-        document.addEventListener('touchstart', unlock, { once: true });
-        document.addEventListener('click', unlock, { once: true });
-      });
-    }
-  }
-}
-
-/* ---------- OPTIMIZED SCREEN SHARING ---------- */
-async function startSharing() {
-  if (isSharing) return;
-  
-  if (isMobile) {
-    status('Screen sharing not supported on mobile devices', 'error');
-    return;
-  }
-  
-  try {
-    // Optimized constraints for smooth streaming
-    const constraints = {
-      video: {
-        cursor: "always",
-        width: { ideal: 1280, max: 1920 },
-        height: { ideal: 720, max: 1080 },
-        frameRate: { ideal: 30, max: 60 },
-        bitrate: { ideal: 2500000, max: 4000000 } // 2.5-4 Mbps for smooth streaming
-      },
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 2,
-        sampleRate: 48000,
-        sampleSize: 16,
-        volume: 1.0
-      }
-    };
-
-    const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
-
-    // Add high-quality audio if not included
-    if (!stream.getAudioTracks().length) {
-      try {
-        const audioStream = await navigator.mediaDevices.getUserMedia({ 
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            channelCount: 2,
-            sampleRate: 48000,
-            sampleSize: 16
-          } 
-        });
-        audioStream.getAudioTracks().forEach(track => {
-          stream.addTrack(track);
-        });
-      } catch (e) {
-        console.warn("Could not add audio:", e);
-      }
-    }
-
-    hostStream = stream;
-    
-    // Optimize video element before setting stream
-    optimizeVideoElement();
-    screenVideo.srcObject = stream;
-    screenVideo.muted = true;
-    
-    screenPlaceholder.classList.add('hidden');
-    screenDisplay.classList.remove('hidden');
-    
-    // Send optimized stream to all peers
-    peers.forEach(conn => {
-      if (conn.open) {
-        sendOptimizedStream(conn, stream);
-      }
-    });
-
-    stopShareBtn.style.display = 'inline-block';
-    startShareBtn.classList.add('hidden');
-    isSharing = true;
-
-    broadcast({ type: 'sharing_started', host: myId });
-    status('Streaming - Optimized for Smooth Playback', 'connected');
-
-    // Handle stream end
-    stream.getTracks().forEach(track => {
-      track.onended = () => {
-        stopSharing();
-      };
-    });
-    
-  } catch (err) {
-    console.error("Share failed:", err);
-    status('Share failed: ' + err.message, 'error');
-  }
-}
-
-function sendOptimizedStream(conn, stream) {
-  if (!conn.open) return;
-  
-  // Create optimized RTCPeerConnection
-  const rtc = new RTCPeerConnection({
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' }
-    ],
-    iceCandidatePoolSize: 10,
-    bundlePolicy: 'max-bundle',
-    rtcpMuxPolicy: 'require'
-  });
-  
-  // Add tracks with optimized settings
-  stream.getTracks().forEach(track => {
-    const sender = rtc.addTrack(track, stream);
-    
-    // Configure video sender for smooth streaming
-    if (track.kind === 'video') {
-      const parameters = sender.getParameters();
-      if (!parameters.encodings) {
-        parameters.encodings = [{}];
-      }
-      // Adaptive quality settings
-      parameters.encodings[0].maxBitrate = 4000000; // 4 Mbps
-      parameters.encodings[0].maxFramerate = 60;
-      parameters.encodings[0].scaleResolutionDownBy = 1.0;
-      sender.setParameters(parameters);
-    }
-  });
-  
-  // Optimized ICE handling
-  rtc.onicecandidate = event => {
-    if (event.candidate) {
-      conn.send({ type: 'ice', candidate: event.candidate });
-    }
-  };
-  
-  // Faster negotiation
-  rtc.onnegotiationneeded = async () => {
-    try {
-      const offer = await rtc.createOffer();
-      await rtc.setLocalDescription(offer);
-      conn.send({ type: 'offer', sdp: rtc.localDescription });
-    } catch (err) {
-      console.error('Negotiation error:', err);
-    }
-  };
-  
-  conn._rtc = rtc;
-  setupAdaptiveStreaming(conn);
-}
-
-function stopSharing() {
-  if (hostStream) {
-    hostStream.getTracks().forEach(track => track.stop());
-  }
-  hostStream = null;
-  isSharing = false;
-  
-  screenPlaceholder.classList.remove('hidden');
-  screenDisplay.classList.add('hidden');
-  screenVideo.srcObject = null;
-  stopShareBtn.style.display = 'none';
-  startShareBtn.classList.remove('hidden');
-  fullscreenBtn.style.display = 'none';
-  qualityIndicator.textContent = 'Auto Quality';
-  qualityIndicator.style.color = '#dcddde';
-  
-  broadcast({ type: 'sharing_stopped' });
-  status('Sharing stopped', 'connected');
-}
-
-/* ---------- OPTIMIZED PEER CONNECTIONS ---------- */
+/* ---------- PHILIPPINES OPTIMIZED PEER CONFIG ---------- */
 function initPeer(fixedId = null) {
   if (peer) peer.destroy();
   
   const peerOptions = {
     debug: 2,
     config: {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' }
-      ],
-      iceCandidatePoolSize: 10,
-      iceTransportPolicy: 'all'
+      iceServers: getPhilippinesIceServers(),
+      iceCandidatePoolSize: 20, // Higher for better PH connectivity
+      iceTransportPolicy: 'all',
+      rtcpMuxPolicy: 'require',
+      bundlePolicy: 'max-bundle',
+      // Optimize for high-latency PH connections
+      iceConnectionTimeout: 10000, // 10 seconds timeout
+      iceCheckingTimeout: 5000
     }
   };
+  
+  console.log('🇵🇭 Using Philippines-optimized ICE servers:', getPhilippinesIceServers());
   
   peer = fixedId ? new Peer(fixedId, peerOptions) : new Peer(peerOptions);
 
   peer.on('open', id => {
     myId = id;
     $('myPeerId').textContent = id;
-    status(`Connected – Ready for smooth streaming`, 'connected');
+    status(`Connected – Philippines Optimized 🇵🇭`, 'connected');
 
     if (isRoomCreator) {
       currentHost = myId;
@@ -784,7 +295,7 @@ function initPeer(fixedId = null) {
 
   peer.on('connection', conn => {
     if (!peers.has(conn.peer)) {
-      setupOptimizedConnection(conn);
+      setupPhilippinesConnection(conn);
     }
   });
   
@@ -792,25 +303,187 @@ function initPeer(fixedId = null) {
     console.error('PeerJS error:', err);
     status(`Connection issue: ${err.type}`, 'error');
     
-    if (err.type === 'network' || err.type === 'disconnected') {
+    // Aggressive reconnection for PH unstable networks
+    if (['network', 'disconnected', 'socket-error'].includes(err.type)) {
       setTimeout(() => {
         if (roomName) {
+          console.log('🇵🇭 Attempting reconnection...');
           initPeer(isRoomCreator ? hashRoomName(roomName) : null);
         }
-      }, 3000);
+      }, 2000);
     }
   });
 }
 
-function setupOptimizedConnection(conn) {
+/* ---------- PHILIPPINES OPTIMIZED STREAMING ---------- */
+async function startSharing() {
+  if (isSharing) return;
+  
+  if (isMobile) {
+    status('Screen sharing not supported on mobile devices', 'error');
+    return;
+  }
+  
+  try {
+    // Philippines-optimized constraints for slower connections
+    const constraints = {
+      video: {
+        cursor: "always",
+        width: { ideal: 1024, max: 1280 }, // Lower resolution for PH bandwidth
+        height: { ideal: 576, max: 720 },
+        frameRate: { ideal: 20, max: 25 }, // Lower FPS for stability
+        bitrate: { ideal: 1000000, max: 1500000 } // 1-1.5 Mbps for PH
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1, // Mono for bandwidth savings
+        sampleRate: 22050, // Lower sample rate
+        sampleSize: 16,
+        volume: 1.0
+      }
+    };
+
+    const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+
+    // Add optimized audio
+    if (!stream.getAudioTracks().length) {
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            channelCount: 1,
+            sampleRate: 22050
+          } 
+        });
+        audioStream.getAudioTracks().forEach(track => {
+          stream.addTrack(track);
+        });
+      } catch (e) {
+        console.warn("Could not add audio:", e);
+      }
+    }
+
+    hostStream = stream;
+    optimizeVideoElement();
+    screenVideo.srcObject = stream;
+    screenVideo.muted = true;
+    
+    screenPlaceholder.classList.add('hidden');
+    screenDisplay.classList.remove('hidden');
+    
+    // Send PH-optimized stream to all peers
+    peers.forEach(conn => {
+      if (conn.open) {
+        sendPhilippinesOptimizedStream(conn, stream);
+      }
+    });
+
+    stopShareBtn.style.display = 'inline-block';
+    startShareBtn.classList.add('hidden');
+    isSharing = true;
+
+    broadcast({ type: 'sharing_started', host: myId });
+    status('Streaming - Philippines Optimized 🇵🇭', 'connected');
+
+    stream.getTracks().forEach(track => {
+      track.onended = () => {
+        stopSharing();
+      };
+    });
+    
+  } catch (err) {
+    console.error("Share failed:", err);
+    status('Share failed: ' + err.message, 'error');
+  }
+}
+
+function sendPhilippinesOptimizedStream(conn, stream) {
+  if (!conn.open) return;
+  
+  const rtc = new RTCPeerConnection({
+    iceServers: getPhilippinesIceServers(),
+    iceCandidatePoolSize: 20,
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
+    iceTransportPolicy: 'all'
+  });
+  
+  // Philippines-optimized video settings
+  stream.getTracks().forEach(track => {
+    const sender = rtc.addTrack(track, stream);
+    
+    if (track.kind === 'video') {
+      const parameters = sender.getParameters();
+      if (!parameters.encodings) {
+        parameters.encodings = [{}];
+      }
+      // Very conservative settings for PH internet
+      parameters.encodings[0].maxBitrate = 1000000; // 1 Mbps
+      parameters.encodings[0].maxFramerate = 20;
+      parameters.encodings[0].scaleResolutionDownBy = 1.0;
+      parameters.degradationPreference = 'maintain-framerate'; // Prioritize FPS over resolution
+      sender.setParameters(parameters);
+    }
+  });
+  
+  // Enhanced ICE for PH high-latency networks
+  let iceBatch = [];
+  const sendIceBatch = () => {
+    if (iceBatch.length > 0) {
+      conn.send({ 
+        type: 'ice_batch', 
+        candidates: iceBatch,
+        region: 'ph'
+      });
+      iceBatch = [];
+    }
+  };
+  
+  rtc.onicecandidate = event => {
+    if (event.candidate) {
+      iceBatch.push(event.candidate);
+      // Send batches more frequently for high-latency
+      if (iceBatch.length >= 2) {
+        sendIceBatch();
+      }
+    } else {
+      // No more candidates, send remaining
+      sendIceBatch();
+    }
+  };
+  
+  // Faster connection setup
+  rtc.onnegotiationneeded = async () => {
+    try {
+      const offer = await rtc.createOffer();
+      await rtc.setLocalDescription(offer);
+      conn.send({ 
+        type: 'offer', 
+        sdp: rtc.localDescription,
+        optimized: 'ph'
+      });
+    } catch (err) {
+      console.error('PH negotiation error:', err);
+    }
+  };
+  
+  conn._rtc = rtc;
+}
+
+/* ---------- PHILIPPINES CONNECTION SETUP ---------- */
+function setupPhilippinesConnection(conn) {
   if (peers.has(conn.peer)) return;
   
   peers.set(conn.peer, conn);
   updatePeerList();
 
   conn.on('open', () => {
+    console.log('🇵🇭 Connected to peer:', conn.peer);
     if (isSharing && hostStream) {
-      sendOptimizedStream(conn, hostStream);
+      sendPhilippinesOptimizedStream(conn, hostStream);
     }
   });
   
@@ -824,14 +497,14 @@ function setupOptimizedConnection(conn) {
     
     if (!data.type) return;
     
-    if (['offer', 'answer', 'ice'].includes(data.type)) {
-      handleOptimizedSDP(data, conn);
+    if (['offer', 'answer', 'ice', 'ice_batch'].includes(data.type)) {
+      handlePhilippinesSDP(data, conn);
       return;
     }
     
     if (data.type === 'sharing_started') {
       currentHost = data.host;
-      status('Receiving optimized stream...', 'connected');
+      status('Receiving Philippines-optimized stream 🇵🇭', 'connected');
       fullscreenBtn.style.display = 'block';
       qualityIndicator.style.display = 'block';
     } else if (data.type === 'sharing_stopped') {
@@ -846,36 +519,25 @@ function setupOptimizedConnection(conn) {
   });
   
   conn.on('close', () => {
-    if (conn._statsCollector) clearInterval(conn._statsCollector);
-    connectionStats.delete(conn.peer);
+    console.log('🇵🇭 Connection closed:', conn.peer);
     peers.delete(conn.peer);
     updatePeerList();
-    updateQualityIndicator();
   });
   
   conn.on('error', err => {
-    console.error('Connection error:', err);
-    if (conn._statsCollector) clearInterval(conn._statsCollector);
-    connectionStats.delete(conn.peer);
+    console.error('PH Connection error:', err);
     peers.delete(conn.peer);
     updatePeerList();
-    updateQualityIndicator();
   });
 }
 
-function handleOptimizedSDP(data, conn) {
+function handlePhilippinesSDP(data, conn) {
   let rtc = conn._rtc;
   
   if (!rtc) {
     rtc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' }
-      ],
-      iceCandidatePoolSize: 10
+      iceServers: getPhilippinesIceServers(),
+      iceCandidatePoolSize: 20
     });
     conn._rtc = rtc;
     
@@ -890,7 +552,7 @@ function handleOptimizedSDP(data, conn) {
         qualityIndicator.style.display = 'block';
         
         unlockMedia();
-        status('Stream active - Smooth playback enabled', 'connected');
+        status('Stream active - PH Optimized 🇵🇭', 'connected');
       }
     };
     
@@ -899,8 +561,6 @@ function handleOptimizedSDP(data, conn) {
         conn.send({ type: 'ice', candidate: event.candidate });
       }
     };
-    
-    setupAdaptiveStreaming(conn);
   }
   
   if (data.type === 'offer') {
@@ -911,33 +571,93 @@ function handleOptimizedSDP(data, conn) {
         conn.send({ type: 'answer', sdp: rtc.localDescription });
       })
       .catch(err => {
-        console.error('SDP handling error:', err);
+        console.error('PH SDP handling error:', err);
       });
   } else if (data.type === 'answer') {
     rtc.setRemoteDescription(new RTCSessionDescription(data.sdp))
       .catch(err => {
-        console.error('Answer handling error:', err);
+        console.error('PH Answer handling error:', err);
       });
   } else if (data.type === 'ice' && data.candidate) {
     rtc.addIceCandidate(new RTCIceCandidate(data.candidate))
       .catch(err => {
-        console.error('ICE candidate error:', err);
+        console.error('PH ICE candidate error:', err);
       });
+  } else if (data.type === 'ice_batch' && data.candidates) {
+    // Batch processing for better PH performance
+    data.candidates.forEach(candidate => {
+      rtc.addIceCandidate(new RTCIceCandidate(candidate))
+        .catch(err => {
+          console.error('PH Batch ICE candidate error:', err);
+        });
+    });
   }
 }
 
-/* ---------- ROOM MANAGEMENT (UNCHANGED) ---------- */
+/* ---------- OPTIMIZATION FUNCTIONS ---------- */
+function optimizeVideoElement() {
+  const video = screenVideo;
+  video.style.transform = 'translateZ(0)';
+  video.style.willChange = 'transform';
+  video.setAttribute('autoplay', 'true');
+  video.setAttribute('muted', 'true');
+  video.setAttribute('playsinline', 'true');
+  video.preload = 'auto';
+  
+  if (isIOS) {
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('x-webkit-airplay', 'deny');
+  }
+}
+
+function unlockMedia() {
+  const video = screenVideo;
+  video.muted = false;
+  video.volume = 1.0;
+  
+  if (isIOS) {
+    video.setAttribute('autoplay', 'true');
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('muted', 'false');
+    
+    const unlock = () => {
+      video.play().catch(() => {});
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('touchend', unlock);
+      document.removeEventListener('click', unlock);
+    };
+    
+    document.addEventListener('touchstart', unlock, { once: true });
+    document.addEventListener('touchend', unlock, { once: true });
+    document.addEventListener('click', unlock, { once: true });
+  } else {
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        const unlock = () => {
+          video.play().catch(() => {});
+          document.removeEventListener('touchstart', unlock);
+          document.removeEventListener('click', unlock);
+        };
+        document.addEventListener('touchstart', unlock, { once: true });
+        document.addEventListener('click', unlock, { once: true });
+      });
+    }
+  }
+}
+
+/* ---------- EXISTING FUNCTIONS (UPDATED) ---------- */
 function hashRoomName(name) {
   let h = 0;
   for (let i = 0; i < name.length; i++) {
     h = ((h << 5) - h) + name.charCodeAt(i);
     h = h & h;
   }
-  return 'room_' + Math.abs(h).toString(36).substr(0, 12);
+  return 'ph_room_' + Math.abs(h).toString(36).substr(0, 12);
 }
 
 function createRoom() {
-  roomName = $('roomId').value.trim() || 'demo';
+  roomName = $('roomId').value.trim() || 'pinas';
   if (!roomName) return alert('Enter room name');
   cleanup();
   isRoomCreator = true;
@@ -946,14 +666,14 @@ function createRoom() {
 }
 
 function joinRoom() {
-  roomName = $('roomId').value.trim() || 'demo';
+  roomName = $('roomId').value.trim() || 'pinas';
   if (!roomName) return alert('Enter room name');
   cleanup();
   isRoomCreator = false;
   showRoomUI();
   initPeer();
   setTimeout(() => {
-    discoveryInterval = setInterval(discoverPeers, 2000);
+    discoveryInterval = setInterval(discoverPeers, 3000); // Slower discovery for PH
   }, 1000);
 }
 
@@ -977,39 +697,43 @@ function connectToPeer(id) {
     reliable: true,
     serialization: 'json'
   });
-  setupOptimizedConnection(conn);
+  setupPhilippinesConnection(conn);
 }
 
 function autoStartHDAudioShare() {
   if (!isRoomCreator || isSharing || isMobile) return;
-  status('Auto-sharing in 2s...', 'connected');
-  autoShareTimeout = setTimeout(startSharing, 2000);
+  status('Auto-sharing in 3s...', 'connected');
+  autoShareTimeout = setTimeout(startSharing, 3000);
 }
 
-/* ---------- UI FUNCTIONS ---------- */
+function stopSharing() {
+  if (hostStream) hostStream.getTracks().forEach(track => track.stop());
+  hostStream = null;
+  isSharing = false;
+  screenPlaceholder.classList.remove('hidden');
+  screenDisplay.classList.add('hidden');
+  screenVideo.srcObject = null;
+  stopShareBtn.style.display = 'none';
+  startShareBtn.classList.remove('hidden');
+  fullscreenBtn.style.display = 'none';
+  broadcast({ type: 'sharing_stopped' });
+  status('Sharing stopped', 'connected');
+}
+
 function status(txt, type = '') {
+  const statusEl = $('status');
   statusEl.textContent = 'Status: ' + txt;
-  if (type === 'connected') {
-    statusEl.style.color = '#43b581';
-  } else if (type === 'error') {
-    statusEl.style.color = '#f04747';
-  } else {
-    statusEl.style.color = 'var(--text-muted)';
-  }
+  if (type === 'connected') statusEl.style.color = '#43b581';
+  else if (type === 'error') statusEl.style.color = '#f04747';
+  else statusEl.style.color = 'var(--text-muted)';
 }
 
 function updatePeerList() {
   const container = $('peerList');
   const list = $('peerItems');
-  
-  if (!peers.size) {
-    container.classList.add('hidden');
-    return;
-  }
-  
-  container.classList.remove('hidden');
+  if (!peers.size) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden'); 
   list.innerHTML = '';
-  
   peers.forEach((_, id) => {
     const div = document.createElement('div');
     div.className = 'peer-item';
@@ -1019,54 +743,35 @@ function updatePeerList() {
 }
 
 function broadcast(obj) {
-  peers.forEach(conn => {
-    if (conn.open) {
-      conn.send(obj);
-    }
-  });
+  peers.forEach(conn => conn.open && conn.send(obj));
 }
 
 function cleanup() {
   if (autoShareTimeout) clearTimeout(autoShareTimeout);
   if (discoveryInterval) clearInterval(discoveryInterval);
-  if (statsInterval) clearInterval(statsInterval);
-  
-  // Clear all stats collectors
-  peers.forEach(conn => {
-    if (conn._statsCollector) clearInterval(conn._statsCollector);
-  });
-  connectionStats.clear();
-  
-  if (hostStream) {
-    hostStream.getTracks().forEach(track => track.stop());
-    hostStream = null;
-  }
-  
-  if (peer) {
-    peer.destroy();
-    peer = null;
-  }
-  
-  peers.clear();
+  if (hostStream) hostStream.getTracks().forEach(track => track.stop());
+  if (peer) peer.destroy();
+  peers.clear(); 
   updatePeerList();
 }
 
-// Initialize optimizations
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    const elem = $('screenDisplay');
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    fullscreenBtn.textContent = 'Exit';
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    fullscreenBtn.textContent = 'Fullscreen';
+  }
+}
+
+// Initialize
 optimizeVideoElement();
-
-// Event listeners
-$('roomId').addEventListener('keypress', e => {
-  if (e.key === 'Enter') createRoom();
-});
-
+$('roomId').addEventListener('keypress', e => e.key === 'Enter' && createRoom());
 window.addEventListener('beforeunload', cleanup);
-window.addEventListener('pagehide', cleanup);
-
-// Toggle stats display
-screenDisplay.addEventListener('dblclick', () => {
-  statsDisplay.classList.toggle('hidden');
-});
 </script>
 </body>
 </html>
-
