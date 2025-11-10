@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>goStream – Discord Theme</title>
+<title>goStream – Mobile Screen Share</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -43,18 +43,20 @@
   }
   input:focus{outline:none;border-color:var(--primary)}
   input::placeholder{color:var(--text-muted);opacity:.7}
+
+  /* RESPONSIVE VIDEO */
   #screen-container{
     margin:1rem 0;border-radius:8px;overflow:hidden;
-    box-shadow:0 4px 12px rgba(0,0,0,.4);background:#000;position:relative
+    box-shadow:0 4px 12px rgba(0,0,0,.4);background:#000;position:relative;
+    height: calc(100vh - 280px); min-height:300px;
   }
-  #screenDisplay{width:100%;height:600px;background:#111;position:relative}
-  #screenVideo{width:100%;height:100%;object-fit:contain;background:#000}
+  #screenDisplay{width:100%;height:100%;position:relative}
+  #screenVideo{width:100%;height:100%;object-fit:cover;background:#000}
   .screen-placeholder{
-    width:100%;height:600px;display:flex;flex-direction:column;
+    width:100%;height:100%;display:flex;flex-direction:column;
     align-items:center;justify-content:center;background:#1a1a1a;color:#72767d;
     font-size:1.1rem;padding:2rem;text-align:center
   }
-  #screenOverlay{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10}
   .fullscreen-btn{
     position:absolute;top:10px;left:50%;transform:translateX(-50%);
     background:rgba(0,0,0,.7);padding:.35rem .75rem;border-radius:16px;
@@ -98,14 +100,14 @@
 <body>
 <header>
   <h1>goStream</h1>
-  <p class="subtitle">HD</p>
+  <p class="subtitle">Mobile Screen Share • HD 60FPS + Audio</p>
 </header>
 <div class="main">
   <!-- ROOM -->
   <div class="room-section" id="roomSection">
     <div class="input-group">
       <label for="roomId">Room Name</label>
-      <input type="text" id="roomId" placeholder="e.g. partyroom" autocomplete="off">
+      <input type="text" id="roomId" placeholder="e.g. mobile" value="mobile" autocomplete="off">
     </div>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
       <button class="primary" onclick="createRoom()">Create Room</button>
@@ -115,15 +117,15 @@
       <div><strong>Room:</strong> <span id="currentRoomName"></span></div>
       <div style="margin-top:.4rem"><strong>ID:</strong> <span id="myPeerId"></span></div>
       <div style="margin-top:.4rem;font-size:.85rem;color:#b9bbbe">
-        iOS: Tap screen to unmute audio
+        iOS: Use "Start Broadcast" in Safari
       </div>
     </div>
   </div>
 
-  <!-- SHARE SECTION (HOST ONLY) -->
+  <!-- SHARE SECTION -->
   <div class="room-section hidden" id="shareSection">
     <div class="control-info">
-      <strong>HD 60FPS + Audio</strong>
+      <strong>Sharing Mobile Screen</strong>
     </div>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:1.5rem 0">
       <button class="danger" id="stopShareBtn" onclick="stopSharing()">Stop Sharing</button>
@@ -134,12 +136,11 @@
   <!-- SCREEN DISPLAY -->
   <div id="screen-container" class="hidden">
     <div class="screen-placeholder" id="screenPlaceholder">
-      <div><strong>Waiting for stream...</strong></div>
+      <div><strong>Waiting for mobile stream...</strong></div>
     </div>
     <div id="screenDisplay" class="hidden">
       <div class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</div>
-      <video id="screenVideo" autoplay playsinline></video>
-      <div id="screenOverlay"></div>
+      <video id="screenVideo" autoplay playsinline muted></video>
     </div>
   </div>
 
@@ -156,15 +157,9 @@
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
 /* ---------- GLOBALS ---------- */
-let peer = null;
-let myId = null;
-let roomName = null;
-let isRoomCreator = false;
-let isSharing = false;
-let currentHost = null;
-let hostStream = null;
-let autoShareTimeout = null;
-let discoveryInterval = null;
+let peer = null, myId = null, roomName = null, isRoomCreator = false;
+let isSharing = false, currentHost = null, hostStream = null;
+let autoShareTimeout = null, discoveryInterval = null;
 const peers = new Map();
 
 /* ---------- UI ELEMENTS ---------- */
@@ -177,89 +172,99 @@ const stopShareBtn = $('stopShareBtn');
 const startShareBtn = $('startShareBtn');
 const fullscreenBtn = $('fullscreenBtn');
 
-/* ---------- FULL-SCREEN ---------- */
+/* ---------- FULLSCREEN ---------- */
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
     screenDisplay.requestFullscreen().catch(() => {});
-    fullscreenBtn.textContent = 'Exit Fullscreen';
+    fullscreenBtn.textContent = 'Exit';
   } else {
     document.exitFullscreen();
     fullscreenBtn.textContent = 'Fullscreen';
   }
 }
 document.addEventListener('fullscreenchange', () => {
-  isFullscreen = !!document.fullscreenElement;
-  fullscreenBtn.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+  fullscreenBtn.textContent = document.fullscreenElement ? 'Exit' : 'Fullscreen';
 });
 
-/* ---------- iOS AUDIO UNLOCK ---------- */
-function enableiOSAudio() {
-  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-    const video = screenVideo;
-    const unlock = () => {
-      video.play().catch(() => {});
-      document.body.removeEventListener('touchstart', unlock);
-      document.body.removeEventListener('click', unlock);
-    };
-    document.body.addEventListener('touchstart', unlock, { once: true });
-    document.body.addEventListener('click', unlock, { once: true });
+/* ---------- UNMUTE iOS/ANDROID ---------- */
+function unlockMedia() {
+  const video = screenVideo;
+  video.muted = false;
+  const play = video.play();
+  if (play !== undefined) {
+    play.catch(() => {
+      const unlock = () => {
+        video.play().catch(() => {});
+        document.body.removeEventListener('touchstart', unlock);
+        document.body.removeEventListener('click', unlock);
+      };
+      document.body.addEventListener('touchstart', unlock, { once: true });
+      document.body.addEventListener('click', unlock, { once: true });
+    });
   }
 }
 
-/* ---------- SHARE SCREEN ---------- */
+/* ---------- MOBILE SCREEN SHARE ---------- */
 async function startSharing() {
   if (isSharing) return;
   try {
-    const stream = await navigator.mediaDevices.getDisplayMedia({
+    // Mobile-friendly constraints
+    const constraints = {
       video: {
         cursor: "always",
-        width: { ideal: 1920, max: 1920 },
-        height: { ideal: 1080, max: 1080 },
-        frameRate: { ideal: 60, max: 60 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 60 }
       },
       audio: true
-    });
+    };
 
-    // Fallback to mic if no system audio
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+    } catch (e) {
+      // Fallback for iOS (Safari Broadcast)
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        alert("Use Safari → Share → 'Start Broadcast' (ReplayKit)");
+        return;
+      }
+      throw e;
+    }
+
+    // Mic fallback if no system audio
     if (!stream.getAudioTracks().length) {
       try {
         const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.addTrack(mic.getAudioTracks()[0]);
-      } catch (e) { console.warn("Mic fallback failed"); }
+      } catch (e) {}
     }
 
     hostStream = stream;
     screenVideo.srcObject = stream;
-    screenVideo.muted = false;
+    screenVideo.muted = true; // Host doesn't hear self
     screenPlaceholder.classList.add('hidden');
     screenDisplay.classList.remove('hidden');
-    enableiOSAudio();
+    unlockMedia();
 
-    // Send to all peers
-    peers.forEach(conn => {
-      if (conn.open) sendStreamTo(conn, stream);
-    });
+    peers.forEach(c => c.open && sendStreamTo(c, stream));
 
     stopShareBtn.style.display = 'inline-block';
     startShareBtn.classList.add('hidden');
     isSharing = true;
 
     broadcast({ type: 'sharing_started', host: myId });
-    status('Streaming HD 60FPS + Audio', 'connected');
+    status('Sharing mobile screen', 'connected');
 
     stream.getTracks().forEach(t => t.onended = stopSharing);
   } catch (err) {
     console.error(err);
-    status('Share canceled or failed.', 'error');
+    status('Share failed. Try again.', 'error');
   }
 }
 
 function stopSharing() {
-  if (hostStream) {
-    hostStream.getTracks().forEach(t => t.stop());
-    hostStream = null;
-  }
-  isSharing = false;
+  if (hostStream) hostStream.getTracks().forEach(t => t.stop());
+  hostStream = null; isSharing = false;
   screenPlaceholder.classList.remove('hidden');
   screenDisplay.classList.add('hidden');
   screenVideo.srcObject = null;
@@ -271,23 +276,19 @@ function stopSharing() {
 }
 
 /* ---------- AUTO START ---------- */
-function autoStartHDAudioShare() {
+function autoStart() {
   if (!isRoomCreator || isSharing) return;
   status('Auto-sharing in 2s...', 'connected');
   autoShareTimeout = setTimeout(startSharing, 2000);
 }
 
-/* ---------- ROOM HASH ---------- */
+/* ---------- PEER & ROOM ---------- */
 function hashRoomName(name) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = ((hash << 5) - hash) + name.charCodeAt(i);
-    hash |= 0;
-  }
-  return 'room_' + Math.abs(hash).toString(36).substr(0, 12);
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = ((h << 5) - h) + name.charCodeAt(i) | 0;
+  return 'room_' + Math.abs(h).toString(36).substr(0, 12);
 }
 
-/* ---------- PEER INIT ---------- */
 function initPeer(fixedId = null) {
   if (peer) peer.destroy();
   peer = fixedId ? new Peer(fixedId) : new Peer();
@@ -296,48 +297,33 @@ function initPeer(fixedId = null) {
     myId = id;
     $('myPeerId').textContent = id;
     status(`Connected – ${id.slice(0,8)}...`, 'connected');
-
     if (isRoomCreator) {
       currentHost = myId;
       $('shareSection').classList.remove('hidden');
       startShareBtn.classList.remove('hidden');
-      autoStartHDAudioShare();
+      autoStart();
     } else {
       discoverPeers();
     }
   });
 
-  peer.on('connection', inc => {
-    if (!peers.has(inc.peer)) setupConn(inc);
-  });
-
-  peer.on('error', err => {
-    console.error(err);
-    status(`Error: ${err.type}`, 'error');
-  });
+  peer.on('connection', inc => !peers.has(inc.peer) && setupConn(inc));
+  peer.on('error', err => status(`Error: ${err.type}`, 'error'));
 }
 
-/* ---------- CREATE / JOIN ROOM ---------- */
 function createRoom() {
-  roomName = $('roomId').value.trim() || 'hdroom';
-  if (!roomName) return alert('Enter a room name');
-  cleanup();
-  isRoomCreator = true;
-  showRoomUI();
-  const roomId = hashRoomName(roomName);
-  initPeer(roomId); // Fixed: Use hashed room ID
+  roomName = $('roomId').value.trim() || 'mobile';
+  if (!roomName) return alert('Enter room name');
+  cleanup(); isRoomCreator = true; showRoomUI();
+  initPeer(hashRoomName(roomName));
 }
 
 function joinRoom() {
-  roomName = $('roomId').value.trim() || 'hdroom';
-  if (!roomName) return alert('Enter a room name');
-  cleanup();
-  isRoomCreator = false;
-  showRoomUI();
-  initPeer(); // Random ID
-  setTimeout(() => {
-    discoveryInterval = setInterval(discoverPeers, 2000);
-  }, 1000);
+  roomName = $('roomId').value.trim() || 'mobile';
+  if (!roomName) return alert('Enter room name');
+  cleanup(); isRoomCreator = false; showRoomUI();
+  initPeer();
+  setTimeout(() => discoveryInterval = setInterval(discoverPeers, 2000), 1000);
 }
 
 function showRoomUI() {
@@ -346,13 +332,11 @@ function showRoomUI() {
   $('screen-container').classList.remove('hidden');
 }
 
-/* ---------- PEER DISCOVERY ---------- */
+/* ---------- PEER LOGIC ---------- */
 function discoverPeers() {
   if (!roomName || !peer?.open || isRoomCreator) return;
-  const targetId = hashRoomName(roomName);
-  if (targetId !== myId && !peers.has(targetId)) {
-    connectToPeer(targetId);
-  }
+  const target = hashRoomName(roomName);
+  if (target !== myId && !peers.has(target)) connectToPeer(target);
 }
 
 function connectToPeer(id) {
@@ -361,48 +345,31 @@ function connectToPeer(id) {
   setupConn(conn);
 }
 
-/* ---------- STREAM TO PEER ---------- */
 function sendStreamTo(conn, stream) {
   if (!conn.open) return;
   const rtc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
   stream.getTracks().forEach(t => rtc.addTrack(t, stream));
-
   rtc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', candidate: e.candidate });
-
   rtc.onnegotiationneeded = async () => {
-    try {
-      const offer = await rtc.createOffer();
-      await rtc.setLocalDescription(offer);
-      conn.send({ type: 'offer', sdp: rtc.localDescription });
-    } catch (e) { console.error(e); }
+    const offer = await rtc.createOffer();
+    await rtc.setLocalDescription(offer);
+    conn.send({ type: 'offer', sdp: rtc.localDescription });
   };
-
   conn._rtc = rtc;
 }
 
-/* ---------- SDP HANDLING ---------- */
 function handleSDP(data, conn) {
-  let rtc = conn._rtc;
-  if (!rtc) {
-    rtc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    conn._rtc = rtc;
-  }
+  let rtc = conn._rtc || new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  conn._rtc = rtc;
 
   if (data.type === 'offer') {
     rtc.setRemoteDescription(data.sdp)
       .then(() => rtc.createAnswer())
-      .then(answer => rtc.setLocalDescription(answer))
-      .then(() => conn.send({ type: 'answer', sdp: rtc.localDescription }))
-      .catch(console.error);
+      .then(a => rtc.setLocalDescription(a))
+      .then(() => conn.send({ type: 'answer', sdp: rtc.localDescription }));
   }
-
-  if (data.type === 'answer') {
-    rtc.setRemoteDescription(data.sdp).catch(console.error);
-  }
-
-  if (data.type === 'ice' && data.candidate) {
-    rtc.addIceCandidate(data.candidate).catch(() => {});
-  }
+  if (data.type === 'answer') rtc.setRemoteDescription(data.sdp);
+  if (data.type === 'ice' && data.candidate) rtc.addIceCandidate(data.candidate);
 
   rtc.ontrack = e => {
     screenVideo.srcObject = e.streams[0];
@@ -410,99 +377,66 @@ function handleSDP(data, conn) {
     screenPlaceholder.classList.add('hidden');
     screenDisplay.classList.remove('hidden');
     fullscreenBtn.style.display = 'block';
-    enableiOSAudio();
+    unlockMedia();
   };
 }
 
-/* ---------- SETUP CONNECTION ---------- */
 function setupConn(conn) {
   if (peers.has(conn.peer)) return;
   peers.set(conn.peer, conn);
   updatePeerList();
 
-  conn.on('open', () => {
-    if (isSharing && hostStream) sendStreamTo(conn, hostStream);
-  });
-
+  conn.on('open', () => isSharing && hostStream && sendStreamTo(conn, hostStream));
   conn.on('data', raw => {
     let data;
     try { data = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return; }
     if (!data.type) return;
-
-    if (['offer', 'answer', 'ice'].includes(data.type)) {
-      handleSDP(data, conn);
-      return;
+    if (['offer','answer','ice'].includes(data.type)) { handleSDP(data, conn); return; }
+    if (data.type === 'sharing_started') {
+      currentHost = data.host;
+      status('Receiving mobile stream', 'connected');
+      fullscreenBtn.style.display = 'block';
     }
-
-    switch (data.type) {
-      case 'sharing_started':
-        currentHost = data.host;
-        status('Receiving HD 60FPS + Audio', 'connected');
-        fullscreenBtn.style.display = 'block';
-        break;
-      case 'sharing_stopped':
-        currentHost = null;
-        screenPlaceholder.classList.remove('hidden');
-        screenDisplay.classList.add('hidden');
-        screenVideo.srcObject = null;
-        fullscreenBtn.style.display = 'none';
-        status('Stream ended', 'connected');
-        break;
+    if (data.type === 'sharing_stopped') {
+      currentHost = null;
+      screenPlaceholder.classList.remove('hidden');
+      screenDisplay.classList.add('hidden');
+      screenVideo.srcObject = null;
+      fullscreenBtn.style.display = 'none';
+      status('Stream ended', 'connected');
     }
   });
-
-  conn.on('close', () => {
-    peers.delete(conn.peer);
-    updatePeerList();
-    if (conn.peer === currentHost) currentHost = null;
-  });
-
-  conn.on('error', err => console.error('Conn error:', err));
+  conn.on('close', () => { peers.delete(conn.peer); updatePeerList(); });
 }
 
 /* ---------- UI HELPERS ---------- */
 function status(txt, type = '') {
   statusEl.textContent = txt;
-  statusEl.className = 'status';
   if (type === 'connected') statusEl.style.color = '#43b581';
   if (type === 'error') statusEl.style.color = '#f04747';
 }
 
 function updatePeerList() {
-  const container = $('peerList');
-  const list = $('peerItems');
-  if (!peers.size) {
-    container.classList.add('hidden');
-    return;
-  }
-  container.classList.remove('hidden');
-  list.innerHTML = '';
+  const c = $('peerList'), l = $('peerItems');
+  if (!peers.size) { c.classList.add('hidden'); return; }
+  c.classList.remove('hidden'); l.innerHTML = '';
   peers.forEach((_, id) => {
-    const el = document.createElement('div');
-    el.className = 'peer-item';
-    el.textContent = id.slice(0, 8) + '...';
-    list.appendChild(el);
+    const d = document.createElement('div'); d.className = 'peer-item';
+    d.textContent = id.slice(0,8)+'...'; l.appendChild(d);
   });
 }
 
-function broadcast(obj) {
-  peers.forEach(c => c.open && c.send(obj));
-}
+function broadcast(obj) { peers.forEach(c => c.open && c.send(obj)); }
 
-/* ---------- CLEANUP ---------- */
 function cleanup() {
   if (autoShareTimeout) clearTimeout(autoShareTimeout);
   if (discoveryInterval) clearInterval(discoveryInterval);
   if (hostStream) hostStream.getTracks().forEach(t => t.stop());
   if (peer) peer.destroy();
-  peers.clear();
-  updatePeerList();
+  peers.clear(); updatePeerList();
 }
 
-/* ---------- EVENTS ---------- */
-$('roomId').addEventListener('keypress', e => {
-  if (e.key === 'Enter') createRoom();
-});
+$('roomId').addEventListener('keypress', e => e.key === 'Enter' && createRoom());
 window.addEventListener('beforeunload', cleanup);
 </script>
 </body>
