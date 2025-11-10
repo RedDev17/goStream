@@ -2,218 +2,508 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>goStream – WebRTC Sync</title>
+<title>goStream – Discord Theme</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+  :root{
+    --bg:#2c2f33;
+    --sidebar:#23272a;
+    --primary:#5865f2;
+    --primary-hover:#4752c4;
+    --danger:#ed4245;
+    --danger-hover:#c93b3d;
+    --text:#dcddde;
+    --text-muted:#72767d;
+    --input-bg:#1e1f22;
+    --input-border:#40444b;
+  }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:Arial,sans-serif;background:#111;color:#fff}
-  header{text-align:center;padding:2rem}
-  h1{font-size:2.8rem}
-  .main{max-width:900px;margin:auto;padding:1rem}
-  #player{margin-bottom:1rem;border-radius:12px;overflow:hidden}
-  .controls{display:flex;gap:1rem;justify-content:center;margin:1rem 0}
-  button{padding:.8rem 1.6rem;font-size:1rem;border:none;border-radius:8px;
-         background:#ff4757;cursor:pointer;color:#fff}
-  button:nth-child(2){background:#1e90ff}
-  button:nth-child(3){background:#2ed573}
-  button:hover{opacity:.9}
-  #status{text-align:center;padding:.6rem;background:#333;border-radius:8px}
-  #room{margin:1rem auto;width:300px}
-  input{width:100%;padding:.6rem;font-size:1rem;border-radius:6px;border:none}
+  body{
+    font-family:'gg sans','Helvetica Neue',Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);min-height:100vh;
+    display:flex;flex-direction:column;
+  }
+  header{
+    background:var(--sidebar);padding:1.5rem;text-align:center;
+    border-bottom:1px solid #000;
+  }
+  h1{font-size:2rem;font-weight:700;margin-bottom:.3rem}
+  .subtitle{font-size:.95rem;color:var(--text-muted)}
+  .main{flex:1;max-width:1200px;margin:auto;width:100%;padding:1rem}
+  .room-section{
+    background:var(--sidebar);border-radius:8px;padding:1.5rem;
+    margin-bottom:1.5rem;box-shadow:0 2px 6px rgba(0,0,0,.3);
+  }
+  .input-group{margin-bottom:1rem}
+  label{display:block;margin-bottom:.5rem;font-weight:600;font-size:.9rem;color:var(--text-muted)}
+  input{
+    width:100%;padding:.75rem 1rem;font-size:1rem;border-radius:6px;
+    border:1px solid var(--input-border);background:var(--input-bg);
+    color:var(--text);transition:border .2s;
+  }
+  input:focus{outline:none;border-color:var(--primary)}
+  input::placeholder{color:var(--text-muted);opacity:.7}
+  #screen-container{
+    margin:1rem 0;border-radius:8px;overflow:hidden;
+    box-shadow:0 4px 12px rgba(0,0,0,.4);background:#000;position:relative
+  }
+  #screenDisplay{width:100%;height:600px;background:#111;position:relative}
+  #screenVideo{width:100%;height:100%;object-fit:contain;background:#000}
+  .screen-placeholder{
+    width:100%;height:600px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:#1a1a1a;color:#72767d;
+    font-size:1.1rem;padding:2rem;text-align:center
+  }
+  #screenOverlay{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10}
+  .fullscreen-btn{
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    background:rgba(0,0,0,.7);padding:.35rem .75rem;border-radius:16px;
+    font-size:.75rem;z-index:20;cursor:pointer;color:#fff
+  }
+  .controls{
+    display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;
+    margin:1.5rem 0;padding:0 1rem
+  }
+  button{
+    padding:.75rem 1.5rem;font-size:.95rem;border:none;border-radius:6px;
+    cursor:pointer;font-weight:600;transition:all .2s;
+    min-width:120px
+  }
+  button.primary{background:var(--primary);color:#fff}
+  button.primary:hover{background:var(--primary-hover)}
+  button.secondary{background:#40444b;color:var(--text)}
+  button.secondary:hover{background:#4f545c}
+  button.danger{background:var(--danger);color:#fff}
+  button.danger:hover{background:var(--danger-hover)}
+  #status{
+    text-align:center;padding:.75rem;background:#36393f;
+    border-radius:6px;margin-top:1rem;font-size:.9rem;
+    color:var(--text-muted)
+  }
+  .peer-list{
+    margin-top:1rem;padding-top:1rem;border-top:1px solid #40444b;
+    font-size:.85rem;color:var(--text-muted)
+  }
+  .peer-item{
+    display:inline-block;padding:.3rem .7rem;margin:.2rem;
+    background:#40444b;border-radius:4px
+  }
+  .hidden{display:none!important}
+  .control-info{
+    text-align:center;margin-top:.5rem;padding:.6rem;
+    background:#36393f;border-radius:6px;font-size:.9rem;color:var(--text-muted)
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>goStream</h1>
-  <p>WebRTC-powered shared video control</p>
+  <p class="subtitle">HD</p>
 </header>
-
 <div class="main">
-  <div id="room">
-    <input type="text" id="roomId" placeholder="Enter room name (e.g. myparty)" autocomplete="off">
-    <button onclick="joinRoom()">Join / Create Room</button>
+  <!-- ROOM -->
+  <div class="room-section" id="roomSection">
+    <div class="input-group">
+      <label for="roomId">Room Name</label>
+      <input type="text" id="roomId" placeholder="e.g. partyroom" autocomplete="off">
+    </div>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <button class="primary" onclick="createRoom()">Create Room</button>
+      <button class="secondary" onclick="joinRoom()">Join Room</button>
+    </div>
+    <div id="roomInfo" class="hidden" style="margin-top:1rem;padding:1rem;background:#36393f;border-radius:6px">
+      <div><strong>Room:</strong> <span id="currentRoomName"></span></div>
+      <div style="margin-top:.4rem"><strong>ID:</strong> <span id="myPeerId"></span></div>
+      <div style="margin-top:.4rem;font-size:.85rem;color:#b9bbbe">
+        iOS: Tap screen to unmute audio
+      </div>
+    </div>
   </div>
 
-  <div id="player"></div>
-
-  <div class="controls">
-    <button onclick="sendControl('play')">Play</button>
-    <button onclick="sendControl('pause')">Pause</button>
-    <button onclick="seekPrompt()">Jump To</button>
+  <!-- SHARE SECTION (HOST ONLY) -->
+  <div class="room-section hidden" id="shareSection">
+    <div class="control-info">
+      <strong>HD 60FPS + Audio</strong>
+    </div>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:1.5rem 0">
+      <button class="danger" id="stopShareBtn" onclick="stopSharing()">Stop Sharing</button>
+      <button class="primary hidden" id="startShareBtn" onclick="startSharing()">Share Screen</button>
+    </div>
   </div>
 
+  <!-- SCREEN DISPLAY -->
+  <div id="screen-container" class="hidden">
+    <div class="screen-placeholder" id="screenPlaceholder">
+      <div><strong>Waiting for stream...</strong></div>
+    </div>
+    <div id="screenDisplay" class="hidden">
+      <div class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</div>
+      <video id="screenVideo" autoplay playsinline></video>
+      <div id="screenOverlay"></div>
+    </div>
+  </div>
+
+  <!-- STATUS -->
   <div id="status">Status: Not connected</div>
+
+  <!-- PEERS -->
+  <div class="peer-list hidden" id="peerList">
+    <strong>Connected:</strong>
+    <div id="peerItems"></div>
+  </div>
 </div>
 
-<!-- PeerJS (public broker) -->
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
-<!-- YouTube IFrame API -->
-<script src="https://www.youtube.com/iframe_api"></script>
-
 <script>
-/* ---------- GLOBAL VARS ---------- */
-let peer, conn, player, myId, roomName;
-const peers = new Set();               // keep track of connected peers
-const statusEl = document.getElementById('status');
+/* ---------- GLOBALS ---------- */
+let peer = null;
+let myId = null;
+let roomName = null;
+let isRoomCreator = false;
+let isSharing = false;
+let currentHost = null;
+let hostStream = null;
+let autoShareTimeout = null;
+let discoveryInterval = null;
+const peers = new Map();
 
-/* ---------- PEERJS SETUP ---------- */
-function initPeer() {
-  peer = new Peer();                     // auto-generates a random ID
+/* ---------- UI ELEMENTS ---------- */
+const $ = id => document.getElementById(id);
+const statusEl = $('status');
+const screenDisplay = $('screenDisplay');
+const screenPlaceholder = $('screenPlaceholder');
+const screenVideo = $('screenVideo');
+const stopShareBtn = $('stopShareBtn');
+const startShareBtn = $('startShareBtn');
+const fullscreenBtn = $('fullscreenBtn');
+
+/* ---------- FULL-SCREEN ---------- */
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    screenDisplay.requestFullscreen().catch(() => {});
+    fullscreenBtn.textContent = 'Exit Fullscreen';
+  } else {
+    document.exitFullscreen();
+    fullscreenBtn.textContent = 'Fullscreen';
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  isFullscreen = !!document.fullscreenElement;
+  fullscreenBtn.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+});
+
+/* ---------- iOS AUDIO UNLOCK ---------- */
+function enableiOSAudio() {
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+    const video = screenVideo;
+    const unlock = () => {
+      video.play().catch(() => {});
+      document.body.removeEventListener('touchstart', unlock);
+      document.body.removeEventListener('click', unlock);
+    };
+    document.body.addEventListener('touchstart', unlock, { once: true });
+    document.body.addEventListener('click', unlock, { once: true });
+  }
+}
+
+/* ---------- SHARE SCREEN ---------- */
+async function startSharing() {
+  if (isSharing) return;
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        cursor: "always",
+        width: { ideal: 1920, max: 1920 },
+        height: { ideal: 1080, max: 1080 },
+        frameRate: { ideal: 60, max: 60 }
+      },
+      audio: true
+    });
+
+    // Fallback to mic if no system audio
+    if (!stream.getAudioTracks().length) {
+      try {
+        const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.addTrack(mic.getAudioTracks()[0]);
+      } catch (e) { console.warn("Mic fallback failed"); }
+    }
+
+    hostStream = stream;
+    screenVideo.srcObject = stream;
+    screenVideo.muted = false;
+    screenPlaceholder.classList.add('hidden');
+    screenDisplay.classList.remove('hidden');
+    enableiOSAudio();
+
+    // Send to all peers
+    peers.forEach(conn => {
+      if (conn.open) sendStreamTo(conn, stream);
+    });
+
+    stopShareBtn.style.display = 'inline-block';
+    startShareBtn.classList.add('hidden');
+    isSharing = true;
+
+    broadcast({ type: 'sharing_started', host: myId });
+    status('Streaming HD 60FPS + Audio', 'connected');
+
+    stream.getTracks().forEach(t => t.onended = stopSharing);
+  } catch (err) {
+    console.error(err);
+    status('Share canceled or failed.', 'error');
+  }
+}
+
+function stopSharing() {
+  if (hostStream) {
+    hostStream.getTracks().forEach(t => t.stop());
+    hostStream = null;
+  }
+  isSharing = false;
+  screenPlaceholder.classList.remove('hidden');
+  screenDisplay.classList.add('hidden');
+  screenVideo.srcObject = null;
+  stopShareBtn.style.display = 'none';
+  startShareBtn.classList.remove('hidden');
+  fullscreenBtn.style.display = 'none';
+  broadcast({ type: 'sharing_stopped' });
+  status('Sharing stopped', 'connected');
+}
+
+/* ---------- AUTO START ---------- */
+function autoStartHDAudioShare() {
+  if (!isRoomCreator || isSharing) return;
+  status('Auto-sharing in 2s...', 'connected');
+  autoShareTimeout = setTimeout(startSharing, 2000);
+}
+
+/* ---------- ROOM HASH ---------- */
+function hashRoomName(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash) + name.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'room_' + Math.abs(hash).toString(36).substr(0, 12);
+}
+
+/* ---------- PEER INIT ---------- */
+function initPeer(fixedId = null) {
+  if (peer) peer.destroy();
+  peer = fixedId ? new Peer(fixedId) : new Peer();
+
   peer.on('open', id => {
     myId = id;
-    status('My ID: ' + id);
+    $('myPeerId').textContent = id;
+    status(`Connected – ${id.slice(0,8)}...`, 'connected');
+
+    if (isRoomCreator) {
+      currentHost = myId;
+      $('shareSection').classList.remove('hidden');
+      startShareBtn.classList.remove('hidden');
+      autoStartHDAudioShare();
+    } else {
+      discoverPeers();
+    }
   });
 
-  // Incoming connection (someone else joins)
-  peer.on('connection', incoming => {
-    if (peers.has(incoming.peer)) return;
-    setupConn(incoming);
+  peer.on('connection', inc => {
+    if (!peers.has(inc.peer)) setupConn(inc);
   });
 
-  peer.on('error', err => console.error(err));
+  peer.on('error', err => {
+    console.error(err);
+    status(`Error: ${err.type}`, 'error');
+  });
 }
 
-/* ---------- JOIN / CREATE ROOM ---------- */
-function joinRoom() {
-  roomName = document.getElementById('roomId').value.trim();
+/* ---------- CREATE / JOIN ROOM ---------- */
+function createRoom() {
+  roomName = $('roomId').value.trim() || 'hdroom';
   if (!roomName) return alert('Enter a room name');
-  document.getElementById('room').style.display = 'none';
-  initPeer();
+  cleanup();
+  isRoomCreator = true;
+  showRoomUI();
+  const roomId = hashRoomName(roomName);
+  initPeer(roomId); // Fixed: Use hashed room ID
 }
 
-/* ---------- CONNECT TO OTHER PEERS ---------- */
-function connectToPeer(peerId) {
-  if (peers.has(peerId) || peerId === myId) return;
-  const c = peer.connect(peerId);
-  setupConn(c);
+function joinRoom() {
+  roomName = $('roomId').value.trim() || 'hdroom';
+  if (!roomName) return alert('Enter a room name');
+  cleanup();
+  isRoomCreator = false;
+  showRoomUI();
+  initPeer(); // Random ID
+  setTimeout(() => {
+    discoveryInterval = setInterval(discoverPeers, 2000);
+  }, 1000);
 }
 
-/* ---------- DATA CHANNEL HANDLER ---------- */
-function setupConn(c) {
-  peers.add(c.peer);
-  conn = c;                     // keep the latest one as "active"
-  status(`Connected to ${c.peer}`);
-
-  c.on('open', () => {
-    // Tell the new peer our current video state
-    if (player) sendState();
-  });
-
-  c.on('data', data => {
-    // data = {action:'play'|'pause'|'seek', time?:number}
-    if (!player) return;
-    if (data.action === 'play') player.playVideo();
-    else if (data.action === 'pause') player.pauseVideo();
-    else if (data.action === 'seek' && typeof data.time === 'number')
-      player.seekTo(data.time, true);
-  });
-
-  c.on('close', () => {
-    peers.delete(c.peer);
-    status(`Disconnected from ${c.peer}`);
-  });
+function showRoomUI() {
+  $('currentRoomName').textContent = roomName;
+  $('roomInfo').classList.remove('hidden');
+  $('screen-container').classList.remove('hidden');
 }
 
-/* ---------- SEND CONTROL TO ALL PEERS ---------- */
-function broadcast(obj) {
-  peers.forEach(p => {
+/* ---------- PEER DISCOVERY ---------- */
+function discoverPeers() {
+  if (!roomName || !peer?.open || isRoomCreator) return;
+  const targetId = hashRoomName(roomName);
+  if (targetId !== myId && !peers.has(targetId)) {
+    connectToPeer(targetId);
+  }
+}
+
+function connectToPeer(id) {
+  if (peers.has(id) || id === myId || !peer?.open) return;
+  const conn = peer.connect(id, { reliable: true, serialization: 'json' });
+  setupConn(conn);
+}
+
+/* ---------- STREAM TO PEER ---------- */
+function sendStreamTo(conn, stream) {
+  if (!conn.open) return;
+  const rtc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  stream.getTracks().forEach(t => rtc.addTrack(t, stream));
+
+  rtc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', candidate: e.candidate });
+
+  rtc.onnegotiationneeded = async () => {
     try {
-      const c = peer.connections[p][0];
-      if (c && c.open) c.send(obj);
-    } catch(e){ }
-  });
-}
-
-/* ---------- UI BUTTONS ---------- */
-function sendControl(action) {
-  if (!player) return;
-  const payload = {action};
-  if (action === 'play') player.playVideo();
-  else if (action === 'pause') player.pauseVideo();
-  broadcast(payload);
-  status(`Sent ${action}`);
-  setTimeout(() => status('Connected'), 1500);
-}
-
-function seekPrompt() {
-  const t = prompt('Go to time (seconds):');
-  if (t === null || isNaN(t)) return;
-  const time = parseFloat(t);
-  if (!player) return;
-  player.seekTo(time, true);
-  broadcast({action:'seek', time});
-  status(`Seek to ${time}s`);
-  setTimeout(() => status('Connected'), 1500);
-}
-
-/* ---------- SEND CURRENT STATE (on new peer) ---------- */
-function sendState() {
-  if (!player) return;
-  const state = player.getPlayerState(); // 1=playing, 2=paused, etc.
-  const time = player.getCurrentTime();
-  const payload = {
-    action: state === 1 ? 'play' : (state === 2 ? 'pause' : 'pause'),
-    time: Math.floor(time)
+      const offer = await rtc.createOffer();
+      await rtc.setLocalDescription(offer);
+      conn.send({ type: 'offer', sdp: rtc.localDescription });
+    } catch (e) { console.error(e); }
   };
-  broadcast(payload);
+
+  conn._rtc = rtc;
 }
 
-/* ---------- YOUTUBE PLAYER ---------- */
-let ytReady = false;
-function onYouTubeIframeAPIReady() {
-  ytReady = true;
-  createPlayer();
+/* ---------- SDP HANDLING ---------- */
+function handleSDP(data, conn) {
+  let rtc = conn._rtc;
+  if (!rtc) {
+    rtc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    conn._rtc = rtc;
+  }
+
+  if (data.type === 'offer') {
+    rtc.setRemoteDescription(data.sdp)
+      .then(() => rtc.createAnswer())
+      .then(answer => rtc.setLocalDescription(answer))
+      .then(() => conn.send({ type: 'answer', sdp: rtc.localDescription }))
+      .catch(console.error);
+  }
+
+  if (data.type === 'answer') {
+    rtc.setRemoteDescription(data.sdp).catch(console.error);
+  }
+
+  if (data.type === 'ice' && data.candidate) {
+    rtc.addIceCandidate(data.candidate).catch(() => {});
+  }
+
+  rtc.ontrack = e => {
+    screenVideo.srcObject = e.streams[0];
+    screenVideo.muted = false;
+    screenPlaceholder.classList.add('hidden');
+    screenDisplay.classList.remove('hidden');
+    fullscreenBtn.style.display = 'block';
+    enableiOSAudio();
+  };
 }
 
-function createPlayer() {
-  player = new YT.Player('player', {
-    height: '480',
-    width: '100%',
-    videoId: 'SsN4gl_wV_8',               // <-- change video here
-    playerVars: { rel: 0, modestbranding: 1 },
-    events: {
-      'onReady': onPlayerReady,
-      'onStateChange': onPlayerStateChange
+/* ---------- SETUP CONNECTION ---------- */
+function setupConn(conn) {
+  if (peers.has(conn.peer)) return;
+  peers.set(conn.peer, conn);
+  updatePeerList();
+
+  conn.on('open', () => {
+    if (isSharing && hostStream) sendStreamTo(conn, hostStream);
+  });
+
+  conn.on('data', raw => {
+    let data;
+    try { data = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return; }
+    if (!data.type) return;
+
+    if (['offer', 'answer', 'ice'].includes(data.type)) {
+      handleSDP(data, conn);
+      return;
     }
+
+    switch (data.type) {
+      case 'sharing_started':
+        currentHost = data.host;
+        status('Receiving HD 60FPS + Audio', 'connected');
+        fullscreenBtn.style.display = 'block';
+        break;
+      case 'sharing_stopped':
+        currentHost = null;
+        screenPlaceholder.classList.remove('hidden');
+        screenDisplay.classList.add('hidden');
+        screenVideo.srcObject = null;
+        fullscreenBtn.style.display = 'none';
+        status('Stream ended', 'connected');
+        break;
+    }
+  });
+
+  conn.on('close', () => {
+    peers.delete(conn.peer);
+    updatePeerList();
+    if (conn.peer === currentHost) currentHost = null;
+  });
+
+  conn.on('error', err => console.error('Conn error:', err));
+}
+
+/* ---------- UI HELPERS ---------- */
+function status(txt, type = '') {
+  statusEl.textContent = txt;
+  statusEl.className = 'status';
+  if (type === 'connected') statusEl.style.color = '#43b581';
+  if (type === 'error') statusEl.style.color = '#f04747';
+}
+
+function updatePeerList() {
+  const container = $('peerList');
+  const list = $('peerItems');
+  if (!peers.size) {
+    container.classList.add('hidden');
+    return;
+  }
+  container.classList.remove('hidden');
+  list.innerHTML = '';
+  peers.forEach((_, id) => {
+    const el = document.createElement('div');
+    el.className = 'peer-item';
+    el.textContent = id.slice(0, 8) + '...';
+    list.appendChild(el);
   });
 }
 
-function onPlayerReady() {
-  status('Player ready');
-  // If we already have peers, sync them now
-  if (peers.size) sendState();
+function broadcast(obj) {
+  peers.forEach(c => c.open && c.send(obj));
 }
 
-function onPlayerStateChange(e) {
-  // Auto-sync when user plays/pauses locally
-  if (e.data === YT.PlayerState.PLAYING) sendControl('play');
-  else if (e.data === YT.PlayerState.PAUSED) sendControl('pause');
+/* ---------- CLEANUP ---------- */
+function cleanup() {
+  if (autoShareTimeout) clearTimeout(autoShareTimeout);
+  if (discoveryInterval) clearInterval(discoveryInterval);
+  if (hostStream) hostStream.getTracks().forEach(t => t.stop());
+  if (peer) peer.destroy();
+  peers.clear();
+  updatePeerList();
 }
 
-/* ---------- ROOM DISCOVERY (very simple) ---------- */
-// We use a **shared "room server"** – a tiny static JSON file on GitHub Pages / any host
-// that maps roomName → array of peer IDs.  Every 3 seconds we poll it.
-const DISCOVERY_URL = 'https://raw.githubusercontent.com/yourusername/gostream-rooms/main/rooms.json';
-async function discoverPeers() {
-  if (!roomName) return;
-  try {
-    const res = await fetch(DISCOVERY_URL + '?t=' + Date.now());
-    const data = await res.json();
-    const ids = data[roomName] || [];
-    ids.forEach(id => connectToPeer(id));
-    // Register ourselves
-    if (myId && !ids.includes(myId)) {
-      data[roomName] = [...new Set([...ids, myId])];
-      // In a real project you would POST to a server; here we just log.
-      console.log('Register yourself by editing the JSON file:', data);
-    }
-  } catch(e){ console.warn('Discovery failed', e); }
-}
-setInterval(discoverPeers, 4000);
-
-/* ---------- HELPER ---------- */
-function status(txt){ statusEl.textContent = 'Status: ' + txt; }
+/* ---------- EVENTS ---------- */
+$('roomId').addEventListener('keypress', e => {
+  if (e.key === 'Enter') createRoom();
+});
+window.addEventListener('beforeunload', cleanup);
 </script>
 </body>
 </html>
