@@ -331,7 +331,7 @@ async function startSharing() {
         cursor: "always",
         width: { ideal: 1024, max: 1280 }, // Lower resolution for PH bandwidth
         height: { ideal: 576, max: 720 },
-        frameRate: { ideal: 20, max: 60 }, // Lower FPS for stability
+        frameRate: { ideal: 20, max: 25 }, // Lower FPS for stability
         bitrate: { ideal: 1000000, max: 1500000 } // 1-1.5 Mbps for PH
       },
       audio: {
