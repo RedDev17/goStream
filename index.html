@@ -55,7 +55,7 @@
     width:100%;height:100%;background:#111;position:relative;
   }
   #screenVideo{
-    width:100%;height:100%;object-fit:cover;background:#000; /* COVER = NO BLACK BARS */
+    width:100%;height:100%;object-fit:contain;background:#000;
   }
   .screen-placeholder{
     width:100%;height:100%;display:flex;flex-direction:column;
@@ -101,6 +101,10 @@
     text-align:center;margin-top:.5rem;padding:.6rem;
     background:#36393f;border-radius:6px;font-size:.9rem;color:var(--text-muted)
   }
+  .mobile-warning {
+    background: #faa81a; color: #000; padding: 0.5rem; border-radius: 6px;
+    margin: 0.5rem 0; text-align: center; font-size: 0.85rem;
+  }
 </style>
 </head>
 <body>
@@ -114,6 +118,9 @@
     <div class="input-group">
       <label for="roomId">Room Name</label>
       <input type="text" id="roomId" placeholder="e.g. demo" autocomplete="off">
+    </div>
+    <div class="mobile-warning" id="mobileWarning">
+      Mobile devices can only view streams, not share screens
     </div>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
       <button class="primary" onclick="createRoom()">Create Room</button>
@@ -175,6 +182,9 @@ let autoShareTimeout = null;
 let discoveryInterval = null;
 const peers = new Map();
 
+// Detect mobile devices
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
 /* ---------- UI ELEMENTS ---------- */
 const $ = id => document.getElementById(id);
 const statusEl = $('status');
@@ -184,89 +194,158 @@ const screenVideo = $('screenVideo');
 const stopShareBtn = $('stopShareBtn');
 const startShareBtn = $('startShareBtn');
 const fullscreenBtn = $('fullscreenBtn');
+const mobileWarning = $('mobileWarning');
+
+// Hide share buttons on mobile
+if (isMobile) {
+  mobileWarning.style.display = 'block';
+} else {
+  mobileWarning.style.display = 'none';
+}
 
 /* ---------- FULL-SCREEN ---------- */
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
-    screenDisplay.requestFullscreen().catch(() => {});
+    const elem = screenDisplay;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+      elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE11 */
+      elem.msRequestFullscreen();
+    }
     fullscreenBtn.textContent = 'Exit';
   } else {
-    document.exitFullscreen();
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) { /* Safari */
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) { /* IE11 */
+      document.msExitFullscreen();
+    }
     fullscreenBtn.textContent = 'Fullscreen';
   }
 }
+
 document.addEventListener('fullscreenchange', () => {
   fullscreenBtn.textContent = document.fullscreenElement ? 'Exit' : 'Fullscreen';
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  fullscreenBtn.textContent = document.webkitFullscreenElement ? 'Exit' : 'Fullscreen';
 });
 
 /* ---------- iOS AUDIO/VIDEO UNLOCK ---------- */
 function unlockMedia() {
   const video = screenVideo;
   video.muted = false;
+  
+  // iOS requires user interaction to play video with audio
   const playPromise = video.play();
   if (playPromise !== undefined) {
     playPromise.catch(() => {
-      // Auto-play was prevented
+      // Auto-play was prevented - setup user gesture to unlock
       const unlock = () => {
+        video.muted = false;
         video.play().catch(() => {});
         document.body.removeEventListener('touchstart', unlock);
         document.body.removeEventListener('click', unlock);
+        document.body.removeEventListener('touchend', unlock);
       };
       document.body.addEventListener('touchstart', unlock, { once: true });
+      document.body.addEventListener('touchend', unlock, { once: true });
       document.body.addEventListener('click', unlock, { once: true });
     });
   }
 }
 
-/* ---------- SHARE SCREEN (MOBILE COMPATIBLE) ---------- */
+/* ---------- SHARE SCREEN (DESKTOP ONLY) ---------- */
 async function startSharing() {
   if (isSharing) return;
+  
+  // Check if on mobile
+  if (isMobile) {
+    status('Screen sharing not supported on mobile devices', 'error');
+    return;
+  }
+  
   try {
+    // Check if getDisplayMedia is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      status('Screen sharing not supported in this browser', 'error');
+      return;
+    }
+
     const constraints = {
       video: {
         cursor: "always",
-        width: { ideal: window.innerWidth * 2, max: 1920 },
-        height: { ideal: window.innerHeight * 2, max: 1080 },
-        frameRate: { ideal: 60, max: 60 }
+        width: { ideal: 1280, max: 1920 },
+        height: { ideal: 720, max: 1080 },
+        frameRate: { ideal: 30, max: 60 }
       },
-      audio: true
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        sampleRate: 44100
+      }
     };
 
     const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
 
-    // Fallback mic
+    // Add audio if not included (some browsers don't include audio by default)
     if (!stream.getAudioTracks().length) {
       try {
-        const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.addTrack(mic.getAudioTracks()[0]);
-      } catch (e) {}
+        const audioStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 44100
+          } 
+        });
+        audioStream.getAudioTracks().forEach(track => {
+          stream.addTrack(track);
+        });
+      } catch (e) {
+        console.warn("Could not add audio:", e);
+      }
     }
 
     hostStream = stream;
     screenVideo.srcObject = stream;
     screenVideo.muted = true; // Host muted
+    
     screenPlaceholder.classList.add('hidden');
     screenDisplay.classList.remove('hidden');
-    unlockMedia();
-
-    peers.forEach(conn => conn.open && sendStreamTo(conn, stream));
+    
+    // Send stream to all connected peers
+    peers.forEach(conn => {
+      if (conn.open) {
+        sendStreamTo(conn, stream);
+      }
+    });
 
     stopShareBtn.style.display = 'inline-block';
     startShareBtn.classList.add('hidden');
     isSharing = true;
 
     broadcast({ type: 'sharing_started', host: myId });
-    status('Streaming HD 60FPS + Audio', 'connected');
+    status('Streaming HD + Audio', 'connected');
 
-    stream.getTracks().forEach(t => t.onended = stopSharing);
+    // Handle when user stops sharing via browser UI
+    stream.getTracks().forEach(track => {
+      track.onended = () => {
+        stopSharing();
+      };
+    });
   } catch (err) {
     console.error("Share failed:", err);
-    status('Share denied. Try again.', 'error');
+    status('Share denied or failed. Try again.', 'error');
   }
 }
 
 function stopSharing() {
-  if (hostStream) hostStream.getTracks().forEach(t => t.stop());
+  if (hostStream) {
+    hostStream.getTracks().forEach(track => track.stop());
+  }
   hostStream = null;
   isSharing = false;
   screenPlaceholder.classList.remove('hidden');
@@ -275,13 +354,14 @@ function stopSharing() {
   stopShareBtn.style.display = 'none';
   startShareBtn.classList.remove('hidden');
   fullscreenBtn.style.display = 'none';
+  
   broadcast({ type: 'sharing_stopped' });
   status('Sharing stopped', 'connected');
 }
 
 /* ---------- AUTO START ---------- */
 function autoStartHDAudioShare() {
-  if (!isRoomCreator || isSharing) return;
+  if (!isRoomCreator || isSharing || isMobile) return;
   status('Auto-sharing in 2s...', 'connected');
   autoShareTimeout = setTimeout(startSharing, 2000);
 }
@@ -289,13 +369,30 @@ function autoStartHDAudioShare() {
 /* ---------- PEER & ROOM ---------- */
 function hashRoomName(name) {
   let h = 0;
-  for (let i = 0; i < name.length; i++) h = ((h << 5) - h) + name.charCodeAt(i) | 0;
+  for (let i = 0; i < name.length; i++) {
+    h = ((h << 5) - h) + name.charCodeAt(i);
+    h = h & h; // Convert to 32bit integer
+  }
   return 'room_' + Math.abs(h).toString(36).substr(0, 12);
 }
 
 function initPeer(fixedId = null) {
-  if (peer) peer.destroy();
-  peer = fixedId ? new Peer(fixedId) : new Peer();
+  if (peer) {
+    peer.destroy();
+  }
+  
+  // Use PeerJS cloud server with configuration for better mobile support
+  const peerOptions = {
+    debug: 3,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    }
+  };
+  
+  peer = fixedId ? new Peer(fixedId, peerOptions) : new Peer(peerOptions);
 
   peer.on('open', id => {
     myId = id;
@@ -305,15 +402,36 @@ function initPeer(fixedId = null) {
     if (isRoomCreator) {
       currentHost = myId;
       $('shareSection').classList.remove('hidden');
-      startShareBtn.classList.remove('hidden');
-      autoStartHDAudioShare();
+      
+      // Only show share button on desktop
+      if (!isMobile) {
+        startShareBtn.classList.remove('hidden');
+        autoStartHDAudioShare();
+      }
     } else {
       discoverPeers();
     }
   });
 
-  peer.on('connection', inc => !peers.has(inc.peer) && setupConn(inc));
-  peer.on('error', err => status(`Error: ${err.type}`, 'error'));
+  peer.on('connection', conn => {
+    if (!peers.has(conn.peer)) {
+      setupConn(conn);
+    }
+  });
+  
+  peer.on('error', err => {
+    console.error('PeerJS error:', err);
+    status(`Connection error: ${err.type}`, 'error');
+    
+    // Try to reconnect on certain errors
+    if (err.type === 'network' || err.type === 'disconnected') {
+      setTimeout(() => {
+        if (roomName) {
+          initPeer(isRoomCreator ? hashRoomName(roomName) : null);
+        }
+      }, 2000);
+    }
+  });
 }
 
 function createRoom() {
@@ -332,7 +450,9 @@ function joinRoom() {
   isRoomCreator = false;
   showRoomUI();
   initPeer();
-  setTimeout(() => discoveryInterval = setInterval(discoverPeers, 2000), 1000);
+  setTimeout(() => {
+    discoveryInterval = setInterval(discoverPeers, 2000);
+  }, 1000);
 }
 
 function showRoomUI() {
@@ -343,71 +463,153 @@ function showRoomUI() {
 
 /* ---------- PEER DISCOVERY & STREAM ---------- */
 function discoverPeers() {
-  if (!roomName || !peer?.open || isRoomCreator) return;
+  if (!roomName || !peer || !peer.open || isRoomCreator) return;
   const target = hashRoomName(roomName);
-  if (target !== myId && !peers.has(target)) connectToPeer(target);
+  if (target !== myId && !peers.has(target)) {
+    connectToPeer(target);
+  }
 }
 
 function connectToPeer(id) {
-  if (peers.has(id) || id === myId || !peer?.open) return;
-  const conn = peer.connect(id, { reliable: true, serialization: 'json' });
+  if (peers.has(id) || id === myId || !peer || !peer.open) return;
+  const conn = peer.connect(id, { 
+    reliable: true,
+    serialization: 'json'
+  });
   setupConn(conn);
 }
 
 function sendStreamTo(conn, stream) {
   if (!conn.open) return;
-  const rtc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-  stream.getTracks().forEach(t => rtc.addTrack(t, stream));
-  rtc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', candidate: e.candidate });
-  rtc.onnegotiationneeded = async () => {
-    const offer = await rtc.createOffer();
-    await rtc.setLocalDescription(offer);
-    conn.send({ type: 'offer', sdp: rtc.localDescription });
+  
+  // Create RTCPeerConnection for streaming
+  const rtc = new RTCPeerConnection({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' }
+    ]
+  });
+  
+  // Add all tracks from the stream
+  stream.getTracks().forEach(track => {
+    rtc.addTrack(track, stream);
+  });
+  
+  // Handle ICE candidates
+  rtc.onicecandidate = event => {
+    if (event.candidate) {
+      conn.send({ type: 'ice', candidate: event.candidate });
+    }
   };
+  
+  // Create offer when negotiation is needed
+  rtc.onnegotiationneeded = async () => {
+    try {
+      const offer = await rtc.createOffer();
+      await rtc.setLocalDescription(offer);
+      conn.send({ type: 'offer', sdp: rtc.localDescription });
+    } catch (err) {
+      console.error('Error creating offer:', err);
+    }
+  };
+  
   conn._rtc = rtc;
 }
 
 function handleSDP(data, conn) {
-  let rtc = conn._rtc || new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-  conn._rtc = rtc;
-
-  if (data.type === 'offer') {
-    rtc.setRemoteDescription(data.sdp)
-      .then(() => rtc.createAnswer())
-      .then(a => rtc.setLocalDescription(a))
-      .then(() => conn.send({ type: 'answer', sdp: rtc.localDescription }))
-      .catch(console.error);
+  let rtc = conn._rtc;
+  
+  if (!rtc) {
+    rtc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    });
+    conn._rtc = rtc;
+    
+    // Handle incoming tracks
+    rtc.ontrack = event => {
+      if (event.streams && event.streams[0]) {
+        screenVideo.srcObject = event.streams[0];
+        screenVideo.muted = false;
+        screenPlaceholder.classList.add('hidden');
+        screenDisplay.classList.remove('hidden');
+        fullscreenBtn.style.display = 'block';
+        
+        // iOS audio unlock
+        unlockMedia();
+        
+        status('Receiving stream...', 'connected');
+      }
+    };
+    
+    // Handle ICE candidates
+    rtc.onicecandidate = event => {
+      if (event.candidate) {
+        conn.send({ type: 'ice', candidate: event.candidate });
+      }
+    };
   }
-  if (data.type === 'answer') rtc.setRemoteDescription(data.sdp);
-  if (data.type === 'ice' && data.candidate) rtc.addIceCandidate(data.candidate);
-
-  rtc.ontrack = e => {
-    screenVideo.srcObject = e.streams[0];
-    screenVideo.muted = false;
-    screenPlaceholder.classList.add('hidden');
-    screenDisplay.classList.remove('hidden');
-    fullscreenBtn.style.display = 'block';
-    unlockMedia();
-  };
+  
+  if (data.type === 'offer') {
+    rtc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+      .then(() => rtc.createAnswer())
+      .then(answer => rtc.setLocalDescription(answer))
+      .then(() => {
+        conn.send({ type: 'answer', sdp: rtc.localDescription });
+      })
+      .catch(err => {
+        console.error('Error handling offer:', err);
+      });
+  } else if (data.type === 'answer') {
+    rtc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+      .catch(err => {
+        console.error('Error setting remote description:', err);
+      });
+  } else if (data.type === 'ice' && data.candidate) {
+    rtc.addIceCandidate(new RTCIceCandidate(data.candidate))
+      .catch(err => {
+        console.error('Error adding ICE candidate:', err);
+      });
+  }
 }
 
 function setupConn(conn) {
   if (peers.has(conn.peer)) return;
+  
   peers.set(conn.peer, conn);
   updatePeerList();
 
-  conn.on('open', () => isSharing && hostStream && sendStreamTo(conn, hostStream));
+  conn.on('open', () => {
+    // If we're sharing, send our stream to the new peer
+    if (isSharing && hostStream) {
+      sendStreamTo(conn, hostStream);
+    }
+  });
+  
   conn.on('data', raw => {
     let data;
-    try { data = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return; }
+    try {
+      data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (e) {
+      return;
+    }
+    
     if (!data.type) return;
-    if (['offer','answer','ice'].includes(data.type)) { handleSDP(data, conn); return; }
+    
+    // Handle WebRTC signaling
+    if (['offer', 'answer', 'ice'].includes(data.type)) {
+      handleSDP(data, conn);
+      return;
+    }
+    
+    // Handle custom messages
     if (data.type === 'sharing_started') {
       currentHost = data.host;
       status('Receiving stream...', 'connected');
       fullscreenBtn.style.display = 'block';
-    }
-    if (data.type === 'sharing_stopped') {
+    } else if (data.type === 'sharing_stopped') {
       currentHost = null;
       screenPlaceholder.classList.remove('hidden');
       screenDisplay.classList.add('hidden');
@@ -416,38 +618,97 @@ function setupConn(conn) {
       status('Stream ended', 'connected');
     }
   });
-  conn.on('close', () => { peers.delete(conn.peer); updatePeerList(); });
+  
+  conn.on('close', () => {
+    peers.delete(conn.peer);
+    updatePeerList();
+  });
+  
+  conn.on('error', err => {
+    console.error('Connection error:', err);
+    peers.delete(conn.peer);
+    updatePeerList();
+  });
 }
 
 /* ---------- UI ---------- */
 function status(txt, type = '') {
-  statusEl.textContent = txt;
-  if (type === 'connected') statusEl.style.color = '#43b581';
-  if (type === 'error') statusEl.style.color = '#f04747';
+  statusEl.textContent = 'Status: ' + txt;
+  if (type === 'connected') {
+    statusEl.style.color = '#43b581';
+  } else if (type === 'error') {
+    statusEl.style.color = '#f04747';
+  } else {
+    statusEl.style.color = 'var(--text-muted)';
+  }
 }
 
 function updatePeerList() {
-  const c = $('peerList'), l = $('peerItems');
-  if (!peers.size) { c.classList.add('hidden'); return; }
-  c.classList.remove('hidden'); l.innerHTML = '';
+  const container = $('peerList');
+  const list = $('peerItems');
+  
+  if (!peers.size) {
+    container.classList.add('hidden');
+    return;
+  }
+  
+  container.classList.remove('hidden');
+  list.innerHTML = '';
+  
   peers.forEach((_, id) => {
-    const d = document.createElement('div'); d.className = 'peer-item';
-    d.textContent = id.slice(0,8)+'...'; l.appendChild(d);
+    const div = document.createElement('div');
+    div.className = 'peer-item';
+    div.textContent = id.slice(0, 8) + '...';
+    list.appendChild(div);
   });
 }
 
-function broadcast(obj) { peers.forEach(c => c.open && c.send(obj)); }
+function broadcast(obj) {
+  peers.forEach(conn => {
+    if (conn.open) {
+      conn.send(obj);
+    }
+  });
+}
 
 function cleanup() {
   if (autoShareTimeout) clearTimeout(autoShareTimeout);
   if (discoveryInterval) clearInterval(discoveryInterval);
-  if (hostStream) hostStream.getTracks().forEach(t => t.stop());
-  if (peer) peer.destroy();
-  peers.clear(); updatePeerList();
+  
+  if (hostStream) {
+    hostStream.getTracks().forEach(track => track.stop());
+    hostStream = null;
+  }
+  
+  if (peer) {
+    peer.destroy();
+    peer = null;
+  }
+  
+  peers.clear();
+  updatePeerList();
 }
 
-$('roomId').addEventListener('keypress', e => e.key === 'Enter' && createRoom());
+// Event listeners
+$('roomId').addEventListener('keypress', e => {
+  if (e.key === 'Enter') {
+    createRoom();
+  }
+});
+
 window.addEventListener('beforeunload', cleanup);
+window.addEventListener('pagehide', cleanup);
+
+// iOS specific event for better handling
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // Page is hidden, could be in background
+    if (isSharing && isMobile) {
+      // On mobile, stop sharing when app goes to background
+      stopSharing();
+    }
+  }
+});
 </script>
 </body>
 </html>
