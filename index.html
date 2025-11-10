@@ -130,6 +130,180 @@
     backdrop-filter: blur(10px);
   }
 </style>
+  <script>
+    /* ---------- ASIA OPTIMIZED SERVERS ---------- */
+function getOptimizedIceServers() {
+  return [
+    // Asia-optimized STUN servers
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    
+    // Asia-specific STUN servers
+    { urls: 'stun:stun.qq.com:3478' }, // Tencent (China)
+    { urls: 'stun:stun.miwifi.com:3478' }, // Xiaomi (China)
+    { urls: 'stun:stun.syncthing.net:3478' }, // Singapore
+    { urls: 'stun:stun.nextcloud.com:3478' }, // Germany but good global coverage
+    
+    // Additional global servers
+    { urls: 'stun:stun.services.mozilla.com:3478' },
+    { urls: 'stun:global.stun.twilio.com:3478' }
+  ];
+}
+
+/* ---------- ASIA OPTIMIZED PEERJS CONFIG ---------- */
+function initPeer(fixedId = null) {
+  if (peer) peer.destroy();
+  
+  const peerOptions = {
+    debug: 2,
+    config: {
+      iceServers: getOptimizedIceServers(),
+      iceCandidatePoolSize: 15, // Increased for better connectivity
+      iceTransportPolicy: 'all',
+      rtcpMuxPolicy: 'require',
+      bundlePolicy: 'max-bundle'
+    },
+    // Optional: Use a custom PeerJS server in Asia
+    // host: 'your-asia-server.com',
+    // port: 9000,
+    // path: '/peerjs'
+  };
+  
+  peer = fixedId ? new Peer(fixedId, peerOptions) : new Peer(peerOptions);
+
+  peer.on('open', id => {
+    myId = id;
+    $('myPeerId').textContent = id;
+    status(`Connected – Asia Optimized`, 'connected');
+    console.log('Connected with ID:', id, 'Using servers:', getOptimizedIceServers());
+
+    if (isRoomCreator) {
+      currentHost = myId;
+      $('shareSection').classList.remove('hidden');
+      
+      if (!isMobile) {
+        startShareBtn.classList.remove('hidden');
+        autoStartHDAudioShare();
+      }
+    } else {
+      discoverPeers();
+    }
+  });
+
+  // ... rest of your existing peer event handlers
+}
+
+/* ---------- ENHANCED CONNECTION FOR ASIA ---------- */
+function createAsiaOptimizedConnection(targetId) {
+  const conn = peer.connect(targetId, {
+    reliable: true,
+    serialization: 'json',
+    metadata: {
+      region: 'asia',
+      timestamp: Date.now()
+    }
+  });
+  
+  return conn;
+}
+
+/* ---------- DIAGNOSTICS FOR ASIA CONNECTIONS ---------- */
+function startConnectionDiagnostics() {
+  console.log('=== ASIA CONNECTION DIAGNOSTICS ===');
+  console.log('User Agent:', navigator.userAgent);
+  console.log('Language:', navigator.language);
+  console.log('ICE Servers:', getOptimizedIceServers());
+  
+  // Test connectivity
+  const startTime = Date.now();
+  const testImage = new Image();
+  testImage.onload = function() {
+    const loadTime = Date.now() - startTime;
+    console.log('Network latency test:', loadTime + 'ms');
+    status(`Network: ${loadTime < 500 ? 'Good' : 'Slow'} (${loadTime}ms)`, 'connected');
+  };
+  testImage.src = 'https://www.google.com/favicon.ico?t=' + Date.now();
+}
+
+// Call this when page loads
+window.addEventListener('load', startConnectionDiagnostics);
+
+/* ---------- IMPROVED STREAMING FOR HIGH LATENCY ---------- */
+function sendAsiaOptimizedStream(conn, stream) {
+  if (!conn.open) return;
+  
+  const rtc = new RTCPeerConnection({
+    iceServers: getOptimizedIceServers(),
+    iceCandidatePoolSize: 15,
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
+    // Optimize for high-latency networks
+    iceTransportPolicy: 'all'
+  });
+  
+  // Add tracks with Asia-optimized settings
+  stream.getTracks().forEach(track => {
+    const sender = rtc.addTrack(track, stream);
+    
+    if (track.kind === 'video') {
+      // Lower bitrate for better performance on high-latency networks
+      const parameters = sender.getParameters();
+      if (!parameters.encodings) {
+        parameters.encodings = [{}];
+      }
+      parameters.encodings[0].maxBitrate = 2000000; // 2 Mbps for Asia
+      parameters.encodings[0].maxFramerate = 25; // Lower FPS for stability
+      parameters.encodings[0].scaleResolutionDownBy = 1.0;
+      sender.setParameters(parameters);
+    }
+  });
+  
+  // Enhanced ICE handling for Asia
+  let iceCandidates = [];
+  rtc.onicecandidate = event => {
+    if (event.candidate) {
+      iceCandidates.push(event.candidate);
+      // Batch send candidates for high-latency networks
+      if (iceCandidates.length >= 3 || event.candidate.type === 'srflx') {
+        conn.send({ 
+          type: 'ice_batch', 
+          candidates: iceCandidates,
+          region: 'asia'
+        });
+        iceCandidates = [];
+      }
+    }
+  };
+  
+  // Faster connection establishment
+  rtc.onnegotiationneeded = async () => {
+    try {
+      const offer = await rtc.createOffer();
+      await rtc.setLocalDescription(offer);
+      conn.send({ 
+        type: 'offer', 
+        sdp: rtc.localDescription,
+        optimized: 'asia'
+      });
+    } catch (err) {
+      console.error('Asia optimized negotiation error:', err);
+    }
+  };
+  
+  conn._rtc = rtc;
+  setupAdaptiveStreaming(conn);
+}
+
+// Update your connectToPeer function
+function connectToPeer(id) {
+  if (peers.has(id) || id === myId || !peer || !peer.open) return;
+  const conn = createAsiaOptimizedConnection(id);
+  setupOptimizedConnection(conn);
+}
+  </script>
 </head>
 <body>
 <header>
@@ -895,3 +1069,4 @@ screenDisplay.addEventListener('dblclick', () => {
 </script>
 </body>
 </html>
+
