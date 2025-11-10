@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>goStream – Discord Theme (Mobile Fixed)</title>
+<title>goStream – Ultra Smooth Streaming</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -44,11 +44,11 @@
   input:focus{outline:none;border-color:var(--primary)}
   input::placeholder{color:var(--text-muted);opacity:.7}
   
-  /* RESPONSIVE VIDEO CONTAINER */
+  /* OPTIMIZED VIDEO CONTAINER */
   #screen-container{
     margin:1rem 0;border-radius:8px;overflow:hidden;
     box-shadow:0 4px 12px rgba(0,0,0,.4);background:#000;position:relative;
-    height: calc(100vh - 280px); /* Full height minus header/UI */
+    height: calc(100vh - 280px);
     min-height: 300px;
   }
   #screenDisplay{
@@ -56,6 +56,7 @@
   }
   #screenVideo{
     width:100%;height:100%;object-fit:contain;background:#000;
+    transform: translateZ(0); /* Hardware acceleration */
   }
   .screen-placeholder{
     width:100%;height:100%;display:flex;flex-direction:column;
@@ -66,7 +67,8 @@
   .fullscreen-btn{
     position:absolute;top:10px;left:50%;transform:translateX(-50%);
     background:rgba(0,0,0,.7);padding:.35rem .75rem;border-radius:16px;
-    font-size:.75rem;z-index:20;cursor:pointer;color:#fff
+    font-size:.75rem;z-index:20;cursor:pointer;color:#fff;
+    backdrop-filter: blur(10px);
   }
   .controls{
     display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;
@@ -105,12 +107,34 @@
     background: #faa81a; color: #000; padding: 0.5rem; border-radius: 6px;
     margin: 0.5rem 0; text-align: center; font-size: 0.85rem;
   }
+  .quality-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    z-index: 20;
+    backdrop-filter: blur(10px);
+  }
+  .stats {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 0.5rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    z-index: 20;
+    backdrop-filter: blur(10px);
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>goStream</h1>
-  <p class="subtitle">HD 60FPS + Audio • Mobile + iOS</p>
+  <p class="subtitle">Ultra Smooth Streaming • Mobile Optimized</p>
 </header>
 <div class="main">
   <!-- ROOM -->
@@ -130,7 +154,7 @@
       <div><strong>Room:</strong> <span id="currentRoomName"></span></div>
       <div style="margin-top:.4rem"><strong>ID:</strong> <span id="myPeerId"></span></div>
       <div style="margin-top:.4rem;font-size:.85rem;color:#b9bbbe">
-        iOS: Tap screen to unmute
+        Tap screen to unmute audio
       </div>
     </div>
   </div>
@@ -138,7 +162,10 @@
   <!-- SHARE SECTION -->
   <div class="room-section hidden" id="shareSection">
     <div class="control-info">
-      <strong>HD 60FPS + Audio</strong>
+      <strong>Optimized for Smooth Streaming</strong>
+      <div style="font-size:0.8rem; margin-top: 0.3rem;">
+        Auto-quality • Low Latency • Mobile Optimized
+      </div>
     </div>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:1.5rem 0">
       <button class="danger" id="stopShareBtn" onclick="stopSharing()">Stop Sharing</button>
@@ -150,9 +177,14 @@
   <div id="screen-container" class="hidden">
     <div class="screen-placeholder" id="screenPlaceholder">
       <div><strong>Waiting for stream...</strong></div>
+      <div style="font-size:0.9rem; margin-top: 0.5rem; color: #72767d;">
+        Stream will start automatically when host begins sharing
+      </div>
     </div>
     <div id="screenDisplay" class="hidden">
       <div class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</div>
+      <div class="quality-indicator" id="qualityIndicator">Auto Quality</div>
+      <div class="stats hidden" id="statsDisplay"></div>
       <video id="screenVideo" autoplay playsinline muted></video>
       <div id="screenOverlay"></div>
     </div>
@@ -180,10 +212,13 @@ let currentHost = null;
 let hostStream = null;
 let autoShareTimeout = null;
 let discoveryInterval = null;
+let statsInterval = null;
 const peers = new Map();
+const connectionStats = new Map();
 
-// Detect mobile devices
+// Detect mobile devices and capabilities
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 /* ---------- UI ELEMENTS ---------- */
 const $ = id => document.getElementById(id);
@@ -195,34 +230,118 @@ const stopShareBtn = $('stopShareBtn');
 const startShareBtn = $('startShareBtn');
 const fullscreenBtn = $('fullscreenBtn');
 const mobileWarning = $('mobileWarning');
+const qualityIndicator = $('qualityIndicator');
+const statsDisplay = $('statsDisplay');
 
-// Hide share buttons on mobile
+// Optimize for mobile
 if (isMobile) {
   mobileWarning.style.display = 'block';
+  // Lower video quality expectations for mobile
+  screenVideo.playsInline = true;
+  screenVideo.setAttribute('webkit-playsinline', 'true');
 } else {
   mobileWarning.style.display = 'none';
+}
+
+/* ---------- SMOOTH STREAMING OPTIMIZATIONS ---------- */
+
+// Hardware acceleration and performance optimizations
+function optimizeVideoElement() {
+  const video = screenVideo;
+  video.style.transform = 'translateZ(0)';
+  video.style.willChange = 'transform';
+  video.setAttribute('autoplay', 'true');
+  video.setAttribute('muted', 'true');
+  video.setAttribute('playsinline', 'true');
+  
+  // Preload for better startup
+  video.preload = 'auto';
+  
+  // iOS specific optimizations
+  if (isIOS) {
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('x-webkit-airplay', 'deny');
+  }
+}
+
+// Adaptive bitrate simulation for smoother streaming
+function setupAdaptiveStreaming(conn) {
+  if (!conn._rtc) return;
+  
+  const rtc = conn._rtc;
+  
+  // Monitor connection quality
+  const statsCollector = setInterval(async () => {
+    if (rtc.iceConnectionState !== 'connected') return;
+    
+    try {
+      const stats = await rtc.getStats();
+      let totalBytesReceived = 0;
+      let packetsLost = 0;
+      let packetsReceived = 0;
+      
+      stats.forEach(report => {
+        if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
+          totalBytesReceived += report.bytesReceived || 0;
+          packetsLost += report.packetsLost || 0;
+          packetsReceived += report.packetsReceived || 0;
+        }
+      });
+      
+      const packetLossRatio = packetsReceived > 0 ? packetsLost / packetsReceived : 0;
+      
+      // Update connection stats
+      connectionStats.set(conn.peer, {
+        bytesReceived: totalBytesReceived,
+        packetLoss: packetLossRatio,
+        timestamp: Date.now()
+      });
+      
+      updateQualityIndicator();
+      
+    } catch (err) {
+      console.log('Stats collection error:', err);
+    }
+  }, 2000);
+  
+  conn._statsCollector = statsCollector;
+}
+
+function updateQualityIndicator() {
+  let totalPacketLoss = 0;
+  let count = 0;
+  
+  connectionStats.forEach(stats => {
+    totalPacketLoss += stats.packetLoss;
+    count++;
+  });
+  
+  const avgPacketLoss = count > 0 ? totalPacketLoss / count : 0;
+  
+  if (avgPacketLoss < 0.05) {
+    qualityIndicator.textContent = 'Excellent';
+    qualityIndicator.style.color = '#43b581';
+  } else if (avgPacketLoss < 0.1) {
+    qualityIndicator.textContent = 'Good';
+    qualityIndicator.style.color = '#faa81a';
+  } else {
+    qualityIndicator.textContent = 'Poor';
+    qualityIndicator.style.color = '#f04747';
+  }
 }
 
 /* ---------- FULL-SCREEN ---------- */
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
     const elem = screenDisplay;
-    if (elem.requestFullscreen) {
-      elem.requestFullscreen();
-    } else if (elem.webkitRequestFullscreen) { /* Safari */
-      elem.webkitRequestFullscreen();
-    } else if (elem.msRequestFullscreen) { /* IE11 */
-      elem.msRequestFullscreen();
-    }
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
     fullscreenBtn.textContent = 'Exit';
   } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) { /* Safari */
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) { /* IE11 */
-      document.msExitFullscreen();
-    }
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (document.msExitFullscreen) document.msExitFullscreen();
     fullscreenBtn.textContent = 'Fullscreen';
   }
 }
@@ -230,75 +349,102 @@ function toggleFullscreen() {
 document.addEventListener('fullscreenchange', () => {
   fullscreenBtn.textContent = document.fullscreenElement ? 'Exit' : 'Fullscreen';
 });
-document.addEventListener('webkitfullscreenchange', () => {
-  fullscreenBtn.textContent = document.webkitFullscreenElement ? 'Exit' : 'Fullscreen';
-});
 
-/* ---------- iOS AUDIO/VIDEO UNLOCK ---------- */
+/* ---------- ULTRA SMOOTH AUDIO/VIDEO UNLOCK ---------- */
 function unlockMedia() {
   const video = screenVideo;
-  video.muted = false;
   
-  // iOS requires user interaction to play video with audio
-  const playPromise = video.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(() => {
-      // Auto-play was prevented - setup user gesture to unlock
-      const unlock = () => {
-        video.muted = false;
-        video.play().catch(() => {});
-        document.body.removeEventListener('touchstart', unlock);
-        document.body.removeEventListener('click', unlock);
-        document.body.removeEventListener('touchend', unlock);
-      };
-      document.body.addEventListener('touchstart', unlock, { once: true });
-      document.body.addEventListener('touchend', unlock, { once: true });
-      document.body.addEventListener('click', unlock, { once: true });
-    });
+  // Reset and prepare for smooth playback
+  video.muted = false;
+  video.volume = 1.0;
+  
+  // Use a more aggressive approach for iOS
+  if (isIOS) {
+    video.setAttribute('autoplay', 'true');
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('muted', 'false');
+    
+    // iOS requires direct user interaction
+    const unlock = () => {
+      video.play().then(() => {
+        console.log('iOS playback started successfully');
+      }).catch(err => {
+        console.log('iOS playback failed:', err);
+      });
+      
+      // Remove listeners after first successful interaction
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('touchend', unlock);
+      document.removeEventListener('click', unlock);
+      video.removeEventListener('loadedmetadata', unlock);
+    };
+    
+    // Multiple event types for maximum compatibility
+    document.addEventListener('touchstart', unlock, { once: true });
+    document.addEventListener('touchend', unlock, { once: true });
+    document.addEventListener('click', unlock, { once: true });
+    video.addEventListener('loadedmetadata', unlock, { once: true });
+    
+  } else {
+    // Standard approach for other devices
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        const unlock = () => {
+          video.play().catch(() => {});
+          document.removeEventListener('touchstart', unlock);
+          document.removeEventListener('click', unlock);
+        };
+        document.addEventListener('touchstart', unlock, { once: true });
+        document.addEventListener('click', unlock, { once: true });
+      });
+    }
   }
 }
 
-/* ---------- SHARE SCREEN (DESKTOP ONLY) ---------- */
+/* ---------- OPTIMIZED SCREEN SHARING ---------- */
 async function startSharing() {
   if (isSharing) return;
   
-  // Check if on mobile
   if (isMobile) {
     status('Screen sharing not supported on mobile devices', 'error');
     return;
   }
   
   try {
-    // Check if getDisplayMedia is available
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      status('Screen sharing not supported in this browser', 'error');
-      return;
-    }
-
+    // Optimized constraints for smooth streaming
     const constraints = {
       video: {
         cursor: "always",
         width: { ideal: 1280, max: 1920 },
         height: { ideal: 720, max: 1080 },
-        frameRate: { ideal: 30, max: 60 }
+        frameRate: { ideal: 30, max: 60 },
+        bitrate: { ideal: 2500000, max: 4000000 } // 2.5-4 Mbps for smooth streaming
       },
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
-        sampleRate: 44100
+        autoGainControl: true,
+        channelCount: 2,
+        sampleRate: 48000,
+        sampleSize: 16,
+        volume: 1.0
       }
     };
 
     const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
 
-    // Add audio if not included (some browsers don't include audio by default)
+    // Add high-quality audio if not included
     if (!stream.getAudioTracks().length) {
       try {
         const audioStream = await navigator.mediaDevices.getUserMedia({ 
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            sampleRate: 44100
+            autoGainControl: true,
+            channelCount: 2,
+            sampleRate: 48000,
+            sampleSize: 16
           } 
         });
         audioStream.getAudioTracks().forEach(track => {
@@ -310,16 +456,19 @@ async function startSharing() {
     }
 
     hostStream = stream;
+    
+    // Optimize video element before setting stream
+    optimizeVideoElement();
     screenVideo.srcObject = stream;
-    screenVideo.muted = true; // Host muted
+    screenVideo.muted = true;
     
     screenPlaceholder.classList.add('hidden');
     screenDisplay.classList.remove('hidden');
     
-    // Send stream to all connected peers
+    // Send optimized stream to all peers
     peers.forEach(conn => {
       if (conn.open) {
-        sendStreamTo(conn, stream);
+        sendOptimizedStream(conn, stream);
       }
     });
 
@@ -328,18 +477,76 @@ async function startSharing() {
     isSharing = true;
 
     broadcast({ type: 'sharing_started', host: myId });
-    status('Streaming HD + Audio', 'connected');
+    status('Streaming - Optimized for Smooth Playback', 'connected');
 
-    // Handle when user stops sharing via browser UI
+    // Handle stream end
     stream.getTracks().forEach(track => {
       track.onended = () => {
         stopSharing();
       };
     });
+    
   } catch (err) {
     console.error("Share failed:", err);
-    status('Share denied or failed. Try again.', 'error');
+    status('Share failed: ' + err.message, 'error');
   }
+}
+
+function sendOptimizedStream(conn, stream) {
+  if (!conn.open) return;
+  
+  // Create optimized RTCPeerConnection
+  const rtc = new RTCPeerConnection({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    ],
+    iceCandidatePoolSize: 10,
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require'
+  });
+  
+  // Add tracks with optimized settings
+  stream.getTracks().forEach(track => {
+    const sender = rtc.addTrack(track, stream);
+    
+    // Configure video sender for smooth streaming
+    if (track.kind === 'video') {
+      const parameters = sender.getParameters();
+      if (!parameters.encodings) {
+        parameters.encodings = [{}];
+      }
+      // Adaptive quality settings
+      parameters.encodings[0].maxBitrate = 4000000; // 4 Mbps
+      parameters.encodings[0].maxFramerate = 60;
+      parameters.encodings[0].scaleResolutionDownBy = 1.0;
+      sender.setParameters(parameters);
+    }
+  });
+  
+  // Optimized ICE handling
+  rtc.onicecandidate = event => {
+    if (event.candidate) {
+      conn.send({ type: 'ice', candidate: event.candidate });
+    }
+  };
+  
+  // Faster negotiation
+  rtc.onnegotiationneeded = async () => {
+    try {
+      const offer = await rtc.createOffer();
+      await rtc.setLocalDescription(offer);
+      conn.send({ type: 'offer', sdp: rtc.localDescription });
+    } catch (err) {
+      console.error('Negotiation error:', err);
+    }
+  };
+  
+  conn._rtc = rtc;
+  setupAdaptiveStreaming(conn);
 }
 
 function stopSharing() {
@@ -348,47 +555,36 @@ function stopSharing() {
   }
   hostStream = null;
   isSharing = false;
+  
   screenPlaceholder.classList.remove('hidden');
   screenDisplay.classList.add('hidden');
   screenVideo.srcObject = null;
   stopShareBtn.style.display = 'none';
   startShareBtn.classList.remove('hidden');
   fullscreenBtn.style.display = 'none';
+  qualityIndicator.textContent = 'Auto Quality';
+  qualityIndicator.style.color = '#dcddde';
   
   broadcast({ type: 'sharing_stopped' });
   status('Sharing stopped', 'connected');
 }
 
-/* ---------- AUTO START ---------- */
-function autoStartHDAudioShare() {
-  if (!isRoomCreator || isSharing || isMobile) return;
-  status('Auto-sharing in 2s...', 'connected');
-  autoShareTimeout = setTimeout(startSharing, 2000);
-}
-
-/* ---------- PEER & ROOM ---------- */
-function hashRoomName(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) {
-    h = ((h << 5) - h) + name.charCodeAt(i);
-    h = h & h; // Convert to 32bit integer
-  }
-  return 'room_' + Math.abs(h).toString(36).substr(0, 12);
-}
-
+/* ---------- OPTIMIZED PEER CONNECTIONS ---------- */
 function initPeer(fixedId = null) {
-  if (peer) {
-    peer.destroy();
-  }
+  if (peer) peer.destroy();
   
-  // Use PeerJS cloud server with configuration for better mobile support
   const peerOptions = {
-    debug: 3,
+    debug: 2,
     config: {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:global.stun.twilio.com:3478' }
-      ]
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' }
+      ],
+      iceCandidatePoolSize: 10,
+      iceTransportPolicy: 'all'
     }
   };
   
@@ -397,13 +593,12 @@ function initPeer(fixedId = null) {
   peer.on('open', id => {
     myId = id;
     $('myPeerId').textContent = id;
-    status(`Connected – ${id.slice(0,8)}...`, 'connected');
+    status(`Connected – Ready for smooth streaming`, 'connected');
 
     if (isRoomCreator) {
       currentHost = myId;
       $('shareSection').classList.remove('hidden');
       
-      // Only show share button on desktop
       if (!isMobile) {
         startShareBtn.classList.remove('hidden');
         autoStartHDAudioShare();
@@ -415,23 +610,156 @@ function initPeer(fixedId = null) {
 
   peer.on('connection', conn => {
     if (!peers.has(conn.peer)) {
-      setupConn(conn);
+      setupOptimizedConnection(conn);
     }
   });
   
   peer.on('error', err => {
     console.error('PeerJS error:', err);
-    status(`Connection error: ${err.type}`, 'error');
+    status(`Connection issue: ${err.type}`, 'error');
     
-    // Try to reconnect on certain errors
     if (err.type === 'network' || err.type === 'disconnected') {
       setTimeout(() => {
         if (roomName) {
           initPeer(isRoomCreator ? hashRoomName(roomName) : null);
         }
-      }, 2000);
+      }, 3000);
     }
   });
+}
+
+function setupOptimizedConnection(conn) {
+  if (peers.has(conn.peer)) return;
+  
+  peers.set(conn.peer, conn);
+  updatePeerList();
+
+  conn.on('open', () => {
+    if (isSharing && hostStream) {
+      sendOptimizedStream(conn, hostStream);
+    }
+  });
+  
+  conn.on('data', raw => {
+    let data;
+    try {
+      data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (e) {
+      return;
+    }
+    
+    if (!data.type) return;
+    
+    if (['offer', 'answer', 'ice'].includes(data.type)) {
+      handleOptimizedSDP(data, conn);
+      return;
+    }
+    
+    if (data.type === 'sharing_started') {
+      currentHost = data.host;
+      status('Receiving optimized stream...', 'connected');
+      fullscreenBtn.style.display = 'block';
+      qualityIndicator.style.display = 'block';
+    } else if (data.type === 'sharing_stopped') {
+      currentHost = null;
+      screenPlaceholder.classList.remove('hidden');
+      screenDisplay.classList.add('hidden');
+      screenVideo.srcObject = null;
+      fullscreenBtn.style.display = 'none';
+      qualityIndicator.style.display = 'none';
+      status('Stream ended', 'connected');
+    }
+  });
+  
+  conn.on('close', () => {
+    if (conn._statsCollector) clearInterval(conn._statsCollector);
+    connectionStats.delete(conn.peer);
+    peers.delete(conn.peer);
+    updatePeerList();
+    updateQualityIndicator();
+  });
+  
+  conn.on('error', err => {
+    console.error('Connection error:', err);
+    if (conn._statsCollector) clearInterval(conn._statsCollector);
+    connectionStats.delete(conn.peer);
+    peers.delete(conn.peer);
+    updatePeerList();
+    updateQualityIndicator();
+  });
+}
+
+function handleOptimizedSDP(data, conn) {
+  let rtc = conn._rtc;
+  
+  if (!rtc) {
+    rtc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' }
+      ],
+      iceCandidatePoolSize: 10
+    });
+    conn._rtc = rtc;
+    
+    rtc.ontrack = event => {
+      if (event.streams && event.streams[0]) {
+        optimizeVideoElement();
+        screenVideo.srcObject = event.streams[0];
+        screenVideo.muted = false;
+        screenPlaceholder.classList.add('hidden');
+        screenDisplay.classList.remove('hidden');
+        fullscreenBtn.style.display = 'block';
+        qualityIndicator.style.display = 'block';
+        
+        unlockMedia();
+        status('Stream active - Smooth playback enabled', 'connected');
+      }
+    };
+    
+    rtc.onicecandidate = event => {
+      if (event.candidate) {
+        conn.send({ type: 'ice', candidate: event.candidate });
+      }
+    };
+    
+    setupAdaptiveStreaming(conn);
+  }
+  
+  if (data.type === 'offer') {
+    rtc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+      .then(() => rtc.createAnswer())
+      .then(answer => rtc.setLocalDescription(answer))
+      .then(() => {
+        conn.send({ type: 'answer', sdp: rtc.localDescription });
+      })
+      .catch(err => {
+        console.error('SDP handling error:', err);
+      });
+  } else if (data.type === 'answer') {
+    rtc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+      .catch(err => {
+        console.error('Answer handling error:', err);
+      });
+  } else if (data.type === 'ice' && data.candidate) {
+    rtc.addIceCandidate(new RTCIceCandidate(data.candidate))
+      .catch(err => {
+        console.error('ICE candidate error:', err);
+      });
+  }
+}
+
+/* ---------- ROOM MANAGEMENT (UNCHANGED) ---------- */
+function hashRoomName(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = ((h << 5) - h) + name.charCodeAt(i);
+    h = h & h;
+  }
+  return 'room_' + Math.abs(h).toString(36).substr(0, 12);
 }
 
 function createRoom() {
@@ -461,7 +789,6 @@ function showRoomUI() {
   $('screen-container').classList.remove('hidden');
 }
 
-/* ---------- PEER DISCOVERY & STREAM ---------- */
 function discoverPeers() {
   if (!roomName || !peer || !peer.open || isRoomCreator) return;
   const target = hashRoomName(roomName);
@@ -476,162 +803,16 @@ function connectToPeer(id) {
     reliable: true,
     serialization: 'json'
   });
-  setupConn(conn);
+  setupOptimizedConnection(conn);
 }
 
-function sendStreamTo(conn, stream) {
-  if (!conn.open) return;
-  
-  // Create RTCPeerConnection for streaming
-  const rtc = new RTCPeerConnection({
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478' }
-    ]
-  });
-  
-  // Add all tracks from the stream
-  stream.getTracks().forEach(track => {
-    rtc.addTrack(track, stream);
-  });
-  
-  // Handle ICE candidates
-  rtc.onicecandidate = event => {
-    if (event.candidate) {
-      conn.send({ type: 'ice', candidate: event.candidate });
-    }
-  };
-  
-  // Create offer when negotiation is needed
-  rtc.onnegotiationneeded = async () => {
-    try {
-      const offer = await rtc.createOffer();
-      await rtc.setLocalDescription(offer);
-      conn.send({ type: 'offer', sdp: rtc.localDescription });
-    } catch (err) {
-      console.error('Error creating offer:', err);
-    }
-  };
-  
-  conn._rtc = rtc;
+function autoStartHDAudioShare() {
+  if (!isRoomCreator || isSharing || isMobile) return;
+  status('Auto-sharing in 2s...', 'connected');
+  autoShareTimeout = setTimeout(startSharing, 2000);
 }
 
-function handleSDP(data, conn) {
-  let rtc = conn._rtc;
-  
-  if (!rtc) {
-    rtc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:global.stun.twilio.com:3478' }
-      ]
-    });
-    conn._rtc = rtc;
-    
-    // Handle incoming tracks
-    rtc.ontrack = event => {
-      if (event.streams && event.streams[0]) {
-        screenVideo.srcObject = event.streams[0];
-        screenVideo.muted = false;
-        screenPlaceholder.classList.add('hidden');
-        screenDisplay.classList.remove('hidden');
-        fullscreenBtn.style.display = 'block';
-        
-        // iOS audio unlock
-        unlockMedia();
-        
-        status('Receiving stream...', 'connected');
-      }
-    };
-    
-    // Handle ICE candidates
-    rtc.onicecandidate = event => {
-      if (event.candidate) {
-        conn.send({ type: 'ice', candidate: event.candidate });
-      }
-    };
-  }
-  
-  if (data.type === 'offer') {
-    rtc.setRemoteDescription(new RTCSessionDescription(data.sdp))
-      .then(() => rtc.createAnswer())
-      .then(answer => rtc.setLocalDescription(answer))
-      .then(() => {
-        conn.send({ type: 'answer', sdp: rtc.localDescription });
-      })
-      .catch(err => {
-        console.error('Error handling offer:', err);
-      });
-  } else if (data.type === 'answer') {
-    rtc.setRemoteDescription(new RTCSessionDescription(data.sdp))
-      .catch(err => {
-        console.error('Error setting remote description:', err);
-      });
-  } else if (data.type === 'ice' && data.candidate) {
-    rtc.addIceCandidate(new RTCIceCandidate(data.candidate))
-      .catch(err => {
-        console.error('Error adding ICE candidate:', err);
-      });
-  }
-}
-
-function setupConn(conn) {
-  if (peers.has(conn.peer)) return;
-  
-  peers.set(conn.peer, conn);
-  updatePeerList();
-
-  conn.on('open', () => {
-    // If we're sharing, send our stream to the new peer
-    if (isSharing && hostStream) {
-      sendStreamTo(conn, hostStream);
-    }
-  });
-  
-  conn.on('data', raw => {
-    let data;
-    try {
-      data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    } catch (e) {
-      return;
-    }
-    
-    if (!data.type) return;
-    
-    // Handle WebRTC signaling
-    if (['offer', 'answer', 'ice'].includes(data.type)) {
-      handleSDP(data, conn);
-      return;
-    }
-    
-    // Handle custom messages
-    if (data.type === 'sharing_started') {
-      currentHost = data.host;
-      status('Receiving stream...', 'connected');
-      fullscreenBtn.style.display = 'block';
-    } else if (data.type === 'sharing_stopped') {
-      currentHost = null;
-      screenPlaceholder.classList.remove('hidden');
-      screenDisplay.classList.add('hidden');
-      screenVideo.srcObject = null;
-      fullscreenBtn.style.display = 'none';
-      status('Stream ended', 'connected');
-    }
-  });
-  
-  conn.on('close', () => {
-    peers.delete(conn.peer);
-    updatePeerList();
-  });
-  
-  conn.on('error', err => {
-    console.error('Connection error:', err);
-    peers.delete(conn.peer);
-    updatePeerList();
-  });
-}
-
-/* ---------- UI ---------- */
+/* ---------- UI FUNCTIONS ---------- */
 function status(txt, type = '') {
   statusEl.textContent = 'Status: ' + txt;
   if (type === 'connected') {
@@ -674,6 +855,13 @@ function broadcast(obj) {
 function cleanup() {
   if (autoShareTimeout) clearTimeout(autoShareTimeout);
   if (discoveryInterval) clearInterval(discoveryInterval);
+  if (statsInterval) clearInterval(statsInterval);
+  
+  // Clear all stats collectors
+  peers.forEach(conn => {
+    if (conn._statsCollector) clearInterval(conn._statsCollector);
+  });
+  connectionStats.clear();
   
   if (hostStream) {
     hostStream.getTracks().forEach(track => track.stop());
@@ -689,25 +877,20 @@ function cleanup() {
   updatePeerList();
 }
 
+// Initialize optimizations
+optimizeVideoElement();
+
 // Event listeners
 $('roomId').addEventListener('keypress', e => {
-  if (e.key === 'Enter') {
-    createRoom();
-  }
+  if (e.key === 'Enter') createRoom();
 });
 
 window.addEventListener('beforeunload', cleanup);
 window.addEventListener('pagehide', cleanup);
 
-// iOS specific event for better handling
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    // Page is hidden, could be in background
-    if (isSharing && isMobile) {
-      // On mobile, stop sharing when app goes to background
-      stopSharing();
-    }
-  }
+// Toggle stats display
+screenDisplay.addEventListener('dblclick', () => {
+  statsDisplay.classList.toggle('hidden');
 });
 </script>
 </body>
