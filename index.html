@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>goStream</title>
+<title>goStream PH • 60fps HD</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -126,7 +126,7 @@
   .btn-secondary:hover { background: #383840; }
   .btn-danger { background: var(--danger); color: #fff; }
   .btn-danger:hover { background: var(--danger-hover); }
-  /* VIDEO CONTAINER */
+
   #video-container {
     position: relative;
     width: 100%;
@@ -233,20 +233,19 @@
     h1 { font-size: 2rem; }
     .btn-group { flex-direction: column; }
     button { width: 100%; }
-    #video-container { aspect-ratio: 16/9; }
   }
 </style>
 </head>
 <body>
 <header>
-  <h1>goStream</h1>
+  <h1>goStream PH</h1>
+  <div class="tagline">60fps • 1080p • iOS & Tab Proof</div>
 </header>
 <div class="main">
-  <!-- ROOM SETUP -->
   <div class="card" id="roomCard">
     <div class="input-group">
       <label for="roomId">Room Name</label>
-      <input type="text" id="roomId" placeholder="e.g. midNightStream" autocomplete="off">
+      <input type="text" id="roomId" placeholder="e.g. pinoy-hd" autocomplete="off">
     </div>
     <div class="mobile-notice" id="mobileNotice">
       Mobile: View in full HD • Share only on desktop
@@ -260,42 +259,45 @@
       <div style="margin-top:.5rem"><strong>ID:</strong> <span id="myId"></span></div>
     </div>
   </div>
-  <!-- SHARE CONTROLS -->
+
   <div class="card hidden" id="shareCard">
     <div class="btn-group">
       <button class="btn-danger" id="stopBtn" onclick="stopSharing()">Stop Sharing</button>
-      <button class="btn-primary hidden" id="startBtn" onclick="startSharing()">Start Sharing</button>
+      <button class="btn-primary hidden" id="startBtn" onclick="startSharing()">Start 60fps HD</button>
     </div>
   </div>
-  <!-- VIDEO -->
+
   <div id="video-container" class="hidden">
     <div class="placeholder" id="placeholder">
-      <div><strong>Waiting stream...</strong></div>
+      <div><strong>Waiting for 60fps HD stream...</strong></div>
     </div>
-    <video id="screenVideo" autoplay playsinline></video>
+    <video id="screenVideo" autoplay playsinline muted></video>
     <div id="qualityBadge" class="hidden">1080p 60fps</div>
     <div class="overlay-controls">
       <button class="ctrl-btn" id="fsBtn" onclick="toggleFullscreen()">Fullscreen</button>
     </div>
   </div>
+
   <div id="status">Status: Not connected</div>
   <div class="peer-list hidden" id="peers">
-    <strong>Viewers Online:</strong>
+    <strong>Viewers:</strong>
     <div id="peerList"></div>
   </div>
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
-/* ========== PROFESSIONAL 60FPS GOSTREAM PH ========== */
+/* ========== FINAL: 60FPS, iOS & TAB PROOF GOSTREAM PH ========== */
 let peer = null, myId = null, room = null, isHost = false;
 let sharing = false, stream = null, hostId = null;
 let discoverInterval = null;
 const connections = new Map();
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const $ = id => document.getElementById(id);
+const video = $('screenVideo');
 
-/* BEST ICE FOR PH (2025) */
+/* ICE SERVERS */
 const iceServers = [
   { urls: 'stun:stun.singapore.trueconf.com:3478' },
   { urls: 'stun:stun.syncthing.net:3478' },
@@ -331,17 +333,12 @@ function initPeer(id = null) {
   });
 }
 
-/* 60FPS HD SHARING */
+/* START SHARING */
 async function startSharing() {
   if (sharing || isMobile) return;
   try {
     const display = await navigator.mediaDevices.getDisplayMedia({
-      video: {
-        cursor: "always",
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        frameRate: { ideal: 60, max: 60 }
-      },
+      video: { cursor: "always", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
       audio: true
     });
 
@@ -354,14 +351,14 @@ async function startSharing() {
 
     stream = display;
     sharing = true;
+    video.srcObject = stream;
+    video.muted = true;
     $('placeholder').classList.add('hidden');
-    $('screenVideo').srcObject = stream;
     $('stopBtn').style.display = 'inline-block';
     $('startBtn').classList.add('hidden');
-    $('qualityBadge').textContent = '1080p 60fps';
     $('qualityBadge').classList.remove('hidden');
 
-    connections.forEach(c => c.open && sendStream(c, stream));
+    connections.forEach(c => c.open && negotiateStream(c, stream));
     broadcast({ type: 'start', host: myId });
     status('Streaming 1080p 60fps', 'success');
 
@@ -371,82 +368,89 @@ async function startSharing() {
   }
 }
 
-function sendStream(conn, stream) {
+function negotiateStream(conn, stream) {
+  if (conn._pc) conn._pc.close();
   const pc = new RTCPeerConnection({ iceServers });
   conn._pc = pc;
 
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
-
   pc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', c: e.candidate });
-  pc.onnegotiationneeded = async () => {
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    conn.send({ type: 'offer', sdp: pc.localDescription });
-  };
 
-  conn.on('data', async d => {
-    if (d.type === 'answer') await pc.setRemoteDescription(d.sdp);
-    if (d.type === 'ice') await pc.addIceCandidate(d.c);
-  });
+  pc.onnegotiationneeded = async () => {
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      conn.send({ type: 'offer', sdp: pc.localDescription });
+    } catch (e) { console.error(e); }
+  };
 }
 
-/* CONNECTION */
+/* CONNECTION SETUP */
 function setupConn(conn) {
   if (connections.has(conn.peer)) return;
   connections.set(conn.peer, conn);
   updatePeers();
 
   conn.on('open', () => {
-    if (sharing && stream) sendStream(conn, stream);
+    if (sharing && stream) negotiateStream(conn, stream);
   });
 
   conn.on('data', async d => {
+    if (!d.type) return;
+
     if (d.type === 'start') {
       hostId = d.host;
-      status('Receiving 1080p 60fps stream', 'success');
+      status('Receiving 60fps HD stream', 'success');
       $('qualityBadge').classList.remove('hidden');
     }
     if (d.type === 'stop') stopReceive();
 
-    // Handle incoming offer (viewer → host)
-    if (d.type === 'offer' && isHost) {
-      const pc = new RTCPeerConnection({ iceServers });
-      conn._pc = pc;
-      if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    const pc = conn._pc || (conn._pc = new RTCPeerConnection({ iceServers }));
 
+    if (d.type === 'offer') {
+      if (isHost && stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
       pc.ontrack = e => {
-        $('screenVideo').srcObject = e.streams[0];
+        video.srcObject = e.streams[0];
+        video.muted = false;
+        unlockiOSVideo();
         $('placeholder').classList.add('hidden');
       };
-
       await pc.setRemoteDescription(d.sdp);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       conn.send({ type: 'answer', sdp: pc.localDescription });
-
-      pc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', c: e.candidate });
     }
 
-    if (d.type === 'answer' && conn._pc) {
-      await conn._pc.setRemoteDescription(d.sdp);
-    }
-    if (d.type === 'ice' && conn._pc) {
-      await conn._pc.addIceCandidate(d.c);
-    }
+    if (d.type === 'answer') await pc.setRemoteDescription(d.sdp);
+    if (d.type === 'ice') await pc.addIceCandidate(d.c);
   });
 
   conn.on('close', () => {
+    if (conn._pc) conn._pc.close();
     connections.delete(conn.peer);
     updatePeers();
   });
 }
 
-/* CALL PEER */
-function callPeer(id) {
-  if (connections.has(id) || id === myId) return;
-  const conn = peer.connect(id);
-  setupConn(conn);
+/* iOS VIDEO UNLOCK */
+function unlockiOSVideo() {
+  if (!isIOS) return;
+  video.muted = true;
+  const play = () => {
+    video.play().catch(() => {});
+    document.removeEventListener('touchstart', play);
+    document.removeEventListener('click', play);
+  };
+  document.addEventListener('touchstart', play, { once: true });
+  document.addEventListener('click', play, { once: true });
 }
+
+/* TAB FOCUS = RE-SEND STREAM */
+window.addEventListener('focus', () => {
+  if (sharing && stream) {
+    connections.forEach(c => c.open && negotiateStream(c, stream));
+  }
+});
 
 /* ROOM LOGIC */
 function hash(name) {
@@ -456,7 +460,7 @@ function hash(name) {
 }
 
 function createRoom() {
-  room = $('roomId').value.trim() || 'pinas-60fps';
+  room = $('roomId').value.trim() || 'pinas-hd';
   if (!room) return alert('Enter room name');
   reset();
   isHost = true;
@@ -465,7 +469,7 @@ function createRoom() {
 }
 
 function joinRoom() {
-  room = $('roomId').value.trim() || 'pinas-60fps';
+  room = $('roomId').value.trim() || 'pinas-hd';
   if (!room) return alert('Enter room name');
   reset();
   isHost = false;
@@ -477,7 +481,10 @@ function joinRoom() {
 function discoverHost() {
   if (isHost || hostId || !peer?.open) return;
   const target = hash(room);
-  if (target !== myId && !connections.has(target)) callPeer(target);
+  if (target !== myId && !connections.has(target)) {
+    const conn = peer.connect(target);
+    setupConn(conn);
+  }
 }
 
 function showRoom() {
@@ -500,7 +507,7 @@ function stopSharing() {
 }
 
 function stopReceive() {
-  $('screenVideo').srcObject = null;
+  video.srcObject = null;
   $('placeholder').classList.remove('hidden');
   hostId = null;
 }
@@ -543,6 +550,7 @@ function toggleFullscreen() {
 
 function reset() {
   if (discoverInterval) clearInterval(discoverInterval);
+  connections.forEach(c => c._pc?.close());
   connections.clear();
   if (peer) peer.destroy();
   updatePeers();
@@ -553,12 +561,11 @@ function reset() {
 }
 
 /* INIT */
-const screenVideo = $('screenVideo');
-screenVideo.addEventListener('loadedmetadata', () => screenVideo.play());
+video.addEventListener('loadedmetadata', () => video.play().catch(() => {}));
 $('roomId').addEventListener('keypress', e => e.key === 'Enter' && (isHost ? createRoom() : joinRoom()));
 window.addEventListener('beforeunload', () => peer?.destroy());
 
-status('Ready • 60fps HD • Philippines Pro');
+status('Ready • 60fps HD • iOS & Tab Proof');
 </script>
 </body>
 </html>
