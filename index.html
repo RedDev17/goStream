@@ -2,440 +2,337 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>goStream PH • 60fps HD</title>
+<title>goStream PH • HD Smooth Streaming</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0f0f12;
-    --card: #1a1a1e;
-    --primary: #5865f2;
-    --primary-hover: #4752c4;
-    --danger: #ed4245;
-    --danger-hover: #c93b3d;
-    --text: #e0e0e0;
-    --text-muted: #a0a0a8;
-    --border: #2d2d34;
-    --success: #43b581;
+  :root{
+    --bg:#1e1f22;
+    --sidebar:#2c2f33;
+    --primary:#5865f2;
+    --primary-hover:#4752c4;
+    --danger:#ed4245;
+    --text:#dcddde;
+    --text-muted:#949ba4;
+    --input-bg:#1a1b1e;
+    --border:#383a40;
+    --success:#43b581;
   }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    line-height: 1.6;
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:var(--bg);color:var(--text);min-height:100vh;
+    display:flex;flex-direction:column;
+    line-height:1.5;
   }
-  header {
-    background: linear-gradient(135deg, #1a1a1e, #141418);
-    padding: 2rem 1.5rem;
-    text-align: center;
-    border-bottom: 1px solid #000;
-    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  header{
+    background:var(--sidebar);padding:1.5rem;text-align:center;
+    border-bottom:1px solid #000;
+    box-shadow:0 2px 10px rgba(0,0,0,.3);
   }
-  h1 {
-    font-size: 2.4rem;
-    font-weight: 800;
-    letter-spacing: -1px;
-    background: linear-gradient(90deg, #5865f2, #00d4ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: .4rem;
+  h1{font-size:2rem;font-weight:800;margin-bottom:.3rem;letter-spacing:-0.5px}
+  .subtitle{font-size:1rem;color:var(--text-muted);font-weight:500}
+  .main{
+    flex:1;max-width:1400px;margin:auto;width:100%;padding:1.5rem;
   }
-  .tagline {
-    font-size: 1.1rem;
-    color: var(--text-muted);
-    font-weight: 500;
+  .room-section{
+    background:var(--sidebar);border-radius:12px;padding:2rem;
+    margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,.4);
+    border:1px solid var(--border);
   }
-  .main {
-    flex: 1;
-    max-width: 1480px;
-    margin: auto;
-    width: 100%;
-    padding: 2rem 1.5rem;
+  .input-group{margin-bottom:1.2rem}
+  label{display:block;margin-bottom:.6rem;font-weight:600;font-size:1rem;color:var(--text-muted)}
+  input{
+    width:100%;padding:1rem 1.2rem;font-size:1.1rem;border-radius:8px;
+    border:1px solid var(--border);background:var(--input-bg);
+    color:var(--text);transition:all .2s;
   }
-  .card {
-    background: var(--card);
-    border-radius: 16px;
-    padding: 2rem;
-    margin-bottom: 1.5rem;
-    border: 1px solid var(--border);
-    box-shadow: 0 8px 32px rgba(0,0,0,.4);
-    transition: transform .2s;
+  input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(88,101,242,.3)}
+  .controls{
+    display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;
+    margin:1.5rem 0;
   }
-  .card:hover { transform: translateY(-2px); }
-  .input-group {
-    margin-bottom: 1.5rem;
+  button{
+    padding:.9rem 2rem;font-size:1rem;border:none;border-radius:8px;
+    cursor:pointer;font-weight:600;transition:all .25s;
+    min-width:140px;position:relative;overflow:hidden;
   }
-  label {
-    display: block;
-    margin-bottom: .6rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    font-size: .95rem;
+  button::before{
+    content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);
+    transition:.5s;
   }
-  input {
-    width: 100%;
-    padding: 1rem 1.3rem;
-    font-size: 1.1rem;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: #111114;
-    color: var(--text);
-    transition: all .25s;
-  }
-  input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(88,101,242,.25);
-  }
-  .btn-group {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin: 1.5rem 0;
-  }
-  button {
-    padding: 1rem 2.2rem;
-    font-size: 1.05rem;
-    font-weight: 600;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all .25s;
-    min-width: 160px;
-    position: relative;
-    overflow: hidden;
-  }
-  button::before {
-    content: '';
-    position: absolute;
-    top: 0; left: -100%;
-    width: 100%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent);
-    transition: .5s;
-  }
-  button:hover::before { left: 100%; }
-  .btn-primary { background: var(--primary); color: #fff; }
-  .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); }
-  .btn-secondary { background: #2d2d34; color: var(--text); }
-  .btn-secondary:hover { background: #383840; }
-  .btn-danger { background: var(--danger); color: #fff; }
-  .btn-danger:hover { background: var(--danger-hover); }
+  button:hover::before{left:100%}
+  button.primary{background:var(--primary);color:#fff}
+  button.primary:hover{background:var(--primary-hover)}
+  button.secondary{background:#40444b;color:var(--text)}
+  button.secondary:hover{background:#4f545c}
+  button.danger{background:var(--danger);color:#fff}
+  button.danger:hover{background:#c93b3d}
 
-  #video-container {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    max-height: 80vh;
-    border-radius: 16px;
-    overflow: hidden;
-    background: #000;
-    margin: 2rem 0;
-    box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  /* RESPONSIVE VIDEO CONTAINER */
+  #screen-container{
+    margin:1.5rem 0;border-radius:12px;overflow:hidden;
+    box-shadow:0 8px 32px rgba(0,0,0,.5);
+    background:#000;position:relative;
+    width:100%;aspect-ratio:16/9;max-height:80vh;
   }
-  #screenVideo {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: #000;
-    display: block;
-    will-change: transform;
-    transform: translateZ(0);
-    image-rendering: -webkit-optimize-contrast;
+  #screenDisplay{
+    width:100%;height:100%;position:relative;background:#000;
   }
-  .placeholder {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: #0a0a0c;
-    color: #666;
-    font-size: 1.3rem;
-    text-align: center;
-    padding: 2rem;
-    z-index: 1;
+  #screenVideo{
+    width:100%;height:100%;object-fit:contain;background:#000;
+    display:block;will-change:transform;transform:translateZ(0);
+    image-rendering:-webkit-optimize-contrast;
   }
-  .placeholder strong { color: #aaa; font-weight: 600; }
-  .overlay-controls {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    display: flex;
-    gap: .8rem;
-    z-index: 20;
+  .screen-placeholder{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:#111;color:#72767d;
+    font-size:1.3rem;padding:2rem;text-align:center;z-index:5;
   }
-  .ctrl-btn {
-    background: rgba(0,0,0,.7);
-    color: #fff;
-    border: none;
-    padding: .6rem 1rem;
-    border-radius: 10px;
-    font-size: .9rem;
-    cursor: pointer;
-    backdrop-filter: blur(12px);
-    transition: .2s;
+  .screen-placeholder strong{color:#aaa;font-weight:600}
+  #status{
+    text-align:center;padding:1rem;background:#36393f;
+    border-radius:8px;margin-top:1rem;font-size:1rem;
+    color:var(--text-muted);font-weight:500;
   }
-  .ctrl-btn:hover { background: rgba(0,0,0,.9); }
-  #qualityBadge {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    background: var(--success);
-    color: #000;
-    font-weight: 700;
-    font-size: .8rem;
-    padding: .4rem .8rem;
-    border-radius: 8px;
-    z-index: 20;
+  .peer-list{
+    margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);
+    font-size:.95rem;
   }
-  #status {
-    text-align: center;
-    padding: 1rem;
-    background: #1e1e22;
-    border-radius: 12px;
-    margin-top: 1rem;
-    font-size: 1rem;
-    font-weight: 500;
-    color: var(--text-muted);
+  .peer-item{
+    display:inline-block;padding:.4rem .9rem;margin:.3rem .3rem 0 0;
+    background:#40444b;border-radius:6px;font-size:.85rem;
   }
-  .peer-list {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
+  .hidden{display:none!important}
+  .mobile-warning{
+    background:#faa81a;color:#000;padding:.8rem;border-radius:8px;
+    margin:1rem 0;text-align:center;font-weight:600;
   }
-  .peer-item {
-    display: inline-block;
-    background: #2d2d34;
-    color: #aaa;
-    padding: .4rem .9rem;
-    border-radius: 8px;
-    font-size: .85rem;
-    margin: .3rem .3rem 0 0;
+  .quality-badge{
+    position:absolute;top:12px;left:12px;background:var(--success);color:#000;
+    padding:.4rem .8rem;border-radius:6px;font-size:.8rem;font-weight:700;
+    z-index:20;
   }
-  .hidden { display: none !important; }
-  .mobile-notice {
-    background: #faa81a;
-    color: #000;
-    padding: .8rem;
-    border-radius: 12px;
-    text-align: center;
-    font-weight: 600;
-    margin: 1rem 0;
+  .overlay-controls{
+    position:absolute;top:12px;right:12px;display:flex;gap:.8rem;z-index:20;
   }
-  @media (max-width: 768px) {
-    h1 { font-size: 2rem; }
-    .btn-group { flex-direction: column; }
-    button { width: 100%; }
+  .ctrl-btn{
+    background:rgba(0,0,0,.7);color:#fff;border:none;padding:.6rem 1rem;
+    border-radius:8px;font-size:.9rem;cursor:pointer;backdrop-filter:blur(10px);
+    transition:.2s;
+  }
+  .ctrl-btn:hover{background:rgba(0,0,0,.9)}
+  @media (max-width:768px){
+    h1{font-size:1.8rem}
+    .controls{flex-direction:column}
+    button{width:100%}
+    #screen-container{aspect-ratio:16/9}
   }
 </style>
 </head>
 <body>
 <header>
   <h1>goStream PH</h1>
-  <div class="tagline">60fps • 1080p • iOS & Tab Proof</div>
+  <div class="subtitle">HD • Smooth • Fullscreen • Philippines Optimized</div>
 </header>
 <div class="main">
-  <div class="card" id="roomCard">
+  <!-- ROOM -->
+  <div class="room-section" id="roomSection">
     <div class="input-group">
       <label for="roomId">Room Name</label>
-      <input type="text" id="roomId" placeholder="e.g. pinoy-hd" autocomplete="off">
+      <input type="text" id="roomId" placeholder="e.g. meeting-pinoy-2025" autocomplete="off">
     </div>
-    <div class="mobile-notice" id="mobileNotice">
-      Mobile: View in full HD • Share only on desktop
+    <div class="mobile-warning" id="mobileWarning">
+      Mobile: Full HD view • Share only on desktop
     </div>
-    <div class="btn-group">
-      <button class="btn-primary" onclick="createRoom()">Create Room</button>
-      <button class="btn-secondary" onclick="joinRoom()">Join Room</button>
+    <div class="controls">
+      <button class="primary" onclick="createRoom()">Create Room</button>
+      <button class="secondary" onclick="joinRoom()">Join Room</button>
     </div>
-    <div id="roomInfo" class="hidden" style="margin-top:1.5rem;padding:1.2rem;background:#141418;border-radius:12px;">
-      <div><strong>Room:</strong> <span id="roomName"></span></div>
-      <div style="margin-top:.5rem"><strong>ID:</strong> <span id="myId"></span></div>
-    </div>
-  </div>
-
-  <div class="card hidden" id="shareCard">
-    <div class="btn-group">
-      <button class="btn-danger" id="stopBtn" onclick="stopSharing()">Stop Sharing</button>
-      <button class="btn-primary hidden" id="startBtn" onclick="startSharing()">Start 60fps HD</button>
+    <div id="roomInfo" class="hidden" style="margin-top:1.5rem;padding:1.2rem;background:#36393f;border-radius:8px">
+      <div><strong>Room:</strong> <span id="currentRoomName"></span></div>
+      <div style="margin-top:.5rem"><strong>Your ID:</strong> <span id="myPeerId"></span></div>
     </div>
   </div>
 
-  <div id="video-container" class="hidden">
-    <div class="placeholder" id="placeholder">
-      <div><strong>Waiting for 60fps HD stream...</strong></div>
+  <!-- SHARE CONTROLS -->
+  <div class="room-section hidden" id="shareSection">
+    <div class="controls">
+      <button class="danger" id="stopShareBtn" onclick="stopSharing()">Stop Sharing</button>
+      <button class="primary hidden" id="startShareBtn" onclick="startSharing()">Start HD Share</button>
     </div>
-    <video id="screenVideo" autoplay playsinline muted></video>
-    <div id="qualityBadge" class="hidden">1080p 60fps</div>
-    <div class="overlay-controls">
-      <button class="ctrl-btn" id="fsBtn" onclick="toggleFullscreen()">Fullscreen</button>
+  </div>
+
+  <!-- VIDEO DISPLAY -->
+  <div id="screen-container" class="hidden">
+    <div class="screen-placeholder" id="screenPlaceholder">
+      <div><strong>Waiting for HD stream...</strong></div>
+      <div style="font-size:.9rem;margin-top:1rem">Philippines-optimized • Up to 1080p • 30fps</div>
+    </div>
+    <div id="screenDisplay" class="hidden">
+      <div class="quality-badge" id="qualityBadge">1080p</div>
+      <div class="overlay-controls">
+        <button class="ctrl-btn" id="fsBtn" onclick="toggleFullscreen()">Fullscreen</button>
+      </div>
+      <video id="screenVideo" autoplay playsinline muted></video>
     </div>
   </div>
 
   <div id="status">Status: Not connected</div>
-  <div class="peer-list hidden" id="peers">
+  <div class="peer-list hidden" id="peerList">
     <strong>Viewers:</strong>
-    <div id="peerList"></div>
+    <div id="peerItems"></div>
   </div>
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
-/* ========== FINAL: 60FPS, iOS & TAB PROOF GOSTREAM PH ========== */
-let peer = null, myId = null, room = null, isHost = false;
-let sharing = false, stream = null, hostId = null;
+/* ========== FINAL: FULLSCREEN + RESPONSIVE + NO BUGS ========== */
+let peer = null, myId = null, roomName = null, isRoomCreator = false;
+let isSharing = false, hostStream = null, currentHost = null;
 let discoverInterval = null;
-const connections = new Map();
+const peers = new Map();
+const isMobile = /Android|iPhone|iPad|iPod|Opera Mini/i.test(navigator.userAgent);
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const $ = id => document.getElementById(id);
 const video = $('screenVideo');
 
-/* ICE SERVERS */
-const iceServers = [
-  { urls: 'stun:stun.singapore.trueconf.com:3478' },
-  { urls: 'stun:stun.syncthing.net:3478' },
-  { urls: 'stun:stun.hk.airasia.com:3478' },
-  { urls: 'stun:stun.jp.zoom.us:3478' },
-  { urls: 'stun:global.stun.twilio.com:3478' },
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' }
-];
+/* PH ICE SERVERS */
+function getPHIceServers() {
+  return [
+    { urls: 'stun:stun.singapore.trueconf.com:3478' },
+    { urls: 'stun:stun.syncthing.net:3478' },
+    { urls: 'stun:stun.hk.airasia.com:3478' },
+    { urls: 'stun:stun.jp.zoom.us:3478' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ];
+}
 
 /* INIT PEER */
-function initPeer(id = null) {
+function initPeer(fixedId = null) {
   if (peer) peer.destroy();
-  peer = id ? new Peer(id, { config: { iceServers }, debug: 2 })
-            : new Peer({ config: { iceServers }, debug: 2 });
-
+  peer = fixedId ? new Peer(fixedId, { config: { iceServers: getPHIceServers() }, debug: 2 })
+                : new Peer({ config: { iceServers: getPHIceServers() }, debug: 2 });
   peer.on('open', id => {
     myId = id;
-    $('myId').textContent = id;
-    status('Connected • Ready', 'success');
-    if (isHost) {
-      hostId = myId;
-      $('shareCard').classList.remove('hidden');
-      if (!isMobile) $('startBtn').classList.remove('hidden');
+    $('myPeerId').textContent = id;
+    status('Connected • Philippines HD Ready', 'connected');
+    if (isRoomCreator) {
+      currentHost = myId;
+      $('shareSection').classList.remove('hidden');
+      if (!isMobile) $('startShareBtn').classList.remove('hidden');
     }
   });
-
-  peer.on('connection', conn => setupConn(conn));
+  peer.on('connection', conn => setupConnection(conn));
   peer.on('error', err => {
     if (['network', 'disconnected'].includes(err.type)) {
-      setTimeout(() => room && initPeer(isHost ? hash(room) : null), 2000);
+      setTimeout(() => roomName && initPeer(isRoomCreator ? hashRoomName(roomName) : null), 2500);
     }
   });
 }
 
 /* START SHARING */
 async function startSharing() {
-  if (sharing || isMobile) return;
+  if (isSharing || isMobile) return;
   try {
-    const display = await navigator.mediaDevices.getDisplayMedia({
-      video: { cursor: "always", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { cursor: "always", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
       audio: true
     });
-
-    if (!display.getAudioTracks().length) {
+    if (!stream.getAudioTracks().length) {
       try {
         const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mic.getTracks().forEach(t => display.addTrack(t));
+        mic.getTracks().forEach(t => stream.addTrack(t));
       } catch {}
     }
-
-    stream = display;
-    sharing = true;
+    hostStream = stream;
+    isSharing = true;
     video.srcObject = stream;
     video.muted = true;
-    $('placeholder').classList.add('hidden');
-    $('stopBtn').style.display = 'inline-block';
-    $('startBtn').classList.add('hidden');
-    $('qualityBadge').classList.remove('hidden');
-
-    connections.forEach(c => c.open && negotiateStream(c, stream));
-    broadcast({ type: 'start', host: myId });
-    status('Streaming 1080p 60fps', 'success');
-
+    $('screenPlaceholder').classList.add('hidden');
+    $('screenDisplay').classList.remove('hidden');
+    $('stopShareBtn').style.display = 'inline-block';
+    $('startShareBtn').classList.add('hidden');
+    $('qualityBadge').textContent = '1080p';
+    peers.forEach(conn => conn.open && negotiateStream(conn, stream));
+    broadcast({ type: 'sharing_started', host: myId });
+    status('Streaming 1080p • Ultra Smooth', 'connected');
     stream.getTracks().forEach(t => t.onended = stopSharing);
-  } catch (e) {
+  } catch(err) {
     status('Share cancelled', 'error');
   }
 }
 
 function negotiateStream(conn, stream) {
-  if (conn._pc) conn._pc.close();
-  const pc = new RTCPeerConnection({ iceServers });
-  conn._pc = pc;
-
-  stream.getTracks().forEach(t => pc.addTrack(t, stream));
-  pc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', c: e.candidate });
-
-  pc.onnegotiationneeded = async () => {
+  if (conn._rtc) conn._rtc.close();
+  const rtc = new RTCPeerConnection({ iceServers: getPHIceServers() });
+  conn._rtc = rtc;
+  stream.getTracks().forEach(t => rtc.addTrack(t, stream));
+  rtc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', candidate: e.candidate });
+  rtc.onnegotiationneeded = async () => {
     try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      conn.send({ type: 'offer', sdp: pc.localDescription });
-    } catch (e) { console.error(e); }
+      const offer = await rtc.createOffer();
+      await rtc.setLocalDescription(offer);
+      conn.send({ type: 'offer', sdp: rtc.localDescription });
+    } catch (e) {}
   };
 }
 
-/* CONNECTION SETUP */
-function setupConn(conn) {
-  if (connections.has(conn.peer)) return;
-  connections.set(conn.peer, conn);
-  updatePeers();
+/* CONNECTION */
+function setupConnection(conn) {
+  if (peers.has(conn.peer)) return;
+  peers.set(conn.peer, conn);
+  updatePeerList();
 
   conn.on('open', () => {
-    if (sharing && stream) negotiateStream(conn, stream);
+    if (isSharing && hostStream) negotiateStream(conn, hostStream);
   });
 
-  conn.on('data', async d => {
-    if (!d.type) return;
-
-    if (d.type === 'start') {
-      hostId = d.host;
-      status('Receiving 60fps HD stream', 'success');
-      $('qualityBadge').classList.remove('hidden');
+  conn.on('data', async data => {
+    if (!data?.type) return;
+    if (data.type === 'sharing_started') {
+      currentHost = data.host;
+      status('Receiving HD stream', 'connected');
+      $('qualityBadge').style.display = 'block';
     }
-    if (d.type === 'stop') stopReceive();
+    if (data.type === 'sharing_stopped') stopReceiving();
 
-    const pc = conn._pc || (conn._pc = new RTCPeerConnection({ iceServers }));
+    const rtc = conn._rtc || (conn._rtc = new RTCPeerConnection({ iceServers: getPHIceServers() }));
 
-    if (d.type === 'offer') {
-      if (isHost && stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
-      pc.ontrack = e => {
+    if (data.type === 'offer') {
+      if (isRoomCreator && hostStream) hostStream.getTracks().forEach(t => rtc.addTrack(t, hostStream));
+      rtc.ontrack = e => {
         video.srcObject = e.streams[0];
         video.muted = false;
         unlockiOSVideo();
-        $('placeholder').classList.add('hidden');
+        $('screenPlaceholder').classList.add('hidden');
+        $('screenDisplay').classList.remove('hidden');
+        $('qualityBadge').style.display = 'block';
       };
-      await pc.setRemoteDescription(d.sdp);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      conn.send({ type: 'answer', sdp: pc.localDescription });
+      await rtc.setRemoteDescription(data.sdp);
+      const answer = await rtc.createAnswer();
+      await rtc.setLocalDescription(answer);
+      conn.send({ type: 'answer', sdp: rtc.localDescription });
     }
 
-    if (d.type === 'answer') await pc.setRemoteDescription(d.sdp);
-    if (d.type === 'ice') await pc.addIceCandidate(d.c);
+    if (data.type === 'answer') await rtc.setRemoteDescription(data.sdp);
+    if (data.type === 'ice') await rtc.addIceCandidate(data.candidate);
   });
 
   conn.on('close', () => {
-    if (conn._pc) conn._pc.close();
-    connections.delete(conn.peer);
-    updatePeers();
+    if (conn._rtc) conn._rtc.close();
+    peers.delete(conn.peer);
+    updatePeerList();
   });
 }
 
 /* iOS VIDEO UNLOCK */
 function unlockiOSVideo() {
   if (!isIOS) return;
-  video.muted = true;
   const play = () => {
     video.play().catch(() => {});
     document.removeEventListener('touchstart', play);
@@ -445,91 +342,91 @@ function unlockiOSVideo() {
   document.addEventListener('click', play, { once: true });
 }
 
-/* TAB FOCUS = RE-SEND STREAM */
+/* TAB FOCUS = RE-NEGOTIATE */
 window.addEventListener('focus', () => {
-  if (sharing && stream) {
-    connections.forEach(c => c.open && negotiateStream(c, stream));
+  if (isSharing && hostStream) {
+    peers.forEach(c => c.open && negotiateStream(c, hostStream));
   }
 });
 
 /* ROOM LOGIC */
-function hash(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = ((h << 5) - h) + name.charCodeAt(i);
-  return 'ph_' + Math.abs(h).toString(36).substr(0, 16);
+function hashRoomName(name) {
+  let h = 0; for (let i = 0; i < name.length; i++) h = ((h << 5) - h) + name.charCodeAt(i);
+  return 'ph_' + Math.abs(h).toString(36).substr(0, 14);
 }
 
 function createRoom() {
-  room = $('roomId').value.trim() || 'pinas-hd';
-  if (!room) return alert('Enter room name');
+  roomName = $('roomId').value.trim() || 'pinas-hd';
+  if (!roomName) return alert('Enter a room name');
   reset();
-  isHost = true;
-  initPeer(hash(room));
+  isRoomCreator = true;
+  initPeer(hashRoomName(roomName));
   showRoom();
 }
 
 function joinRoom() {
-  room = $('roomId').value.trim() || 'pinas-hd';
-  if (!room) return alert('Enter room name');
+  roomName = $('roomId').value.trim() || 'pinas-hd';
+  if (!roomName) return alert('Enter a room name');
   reset();
-  isHost = false;
+  isRoomCreator = false;
   initPeer();
   showRoom();
-  discoverInterval = setInterval(discoverHost, 2500);
+  discoverInterval = setInterval(discoverHost, 3000);
 }
 
 function discoverHost() {
-  if (isHost || hostId || !peer?.open) return;
-  const target = hash(room);
-  if (target !== myId && !connections.has(target)) {
+  if (isRoomCreator || currentHost || !peer?.open) return;
+  const target = hashRoomName(roomName);
+  if (target !== myId && !peers.has(target)) {
     const conn = peer.connect(target);
-    setupConn(conn);
+    setupConnection(conn);
   }
 }
 
 function showRoom() {
-  $('roomName').textContent = room;
+  $('currentRoomName').textContent = roomName;
   $('roomInfo').classList.remove('hidden');
-  $('video-container').classList.remove('hidden');
-  $('roomCard').querySelector('.btn-group').style.display = 'none';
+  $('screen-container').classList.remove('hidden');
+  $('roomSection').querySelector('.controls').style.display = 'none';
 }
 
 /* STOP */
 function stopSharing() {
-  if (stream) stream.getTracks().forEach(t => t.stop());
-  stream = null; sharing = false;
-  $('stopBtn').style.display = 'none';
-  $('startBtn').classList.remove('hidden');
-  $('qualityBadge').classList.add('hidden');
-  stopReceive();
-  broadcast({ type: 'stop' });
+  if (hostStream) hostStream.getTracks().forEach(t => t.stop());
+  hostStream = null; isSharing = false;
+  $('stopShareBtn').style.display = 'none';
+  $('startShareBtn').classList.remove('hidden');
+  $('qualityBadge').style.display = 'none';
+  stopReceiving();
+  broadcast({ type: 'sharing_stopped' });
   status('Sharing stopped');
 }
 
-function stopReceive() {
+function stopReceiving() {
   video.srcObject = null;
-  $('placeholder').classList.remove('hidden');
-  hostId = null;
+  $('screenDisplay').classList.add('hidden');
+  $('screenPlaceholder').classList.remove('hidden');
+  currentHost = null;
 }
 
 /* UTILS */
 function broadcast(obj) {
-  connections.forEach(c => c.open && c.send(obj));
+  peers.forEach(c => c.open && c.send(obj));
 }
 
 function status(txt, type = '') {
   const el = $('status');
   el.textContent = 'Status: ' + txt;
-  el.style.color = type === 'success' ? '#43b581' : type === 'error' ? '#f04747' : 'var(--text-muted)';
+  el.style.color = type === 'connected' ? '#43b581' : type === 'error' ? '#f04747' : 'var(--text-muted)';
 }
 
-function updatePeers() {
-  const list = $('peerList');
-  const container = $('peers');
+function updatePeerList() {
+  const list = $('peerItems');
+  const container = $('peerList');
   list.innerHTML = '';
-  if (!connections.size) return container.classList.add('hidden');
+  if (!peers.size) return container.classList.add('hidden');
   container.classList.remove('hidden');
-  connections.forEach((_, id) => {
+  peers.forEach((_, id) => {
     const el = document.createElement('div');
     el.className = 'peer-item';
     el.textContent = id.slice(-8);
@@ -538,7 +435,7 @@ function updatePeers() {
 }
 
 function toggleFullscreen() {
-  const el = $('video-container');
+  const el = $('screen-container');
   if (!document.fullscreenElement) {
     el.requestFullscreen?.() || el.webkitRequestFullscreen?.();
     $('fsBtn').textContent = 'Exit';
@@ -550,22 +447,22 @@ function toggleFullscreen() {
 
 function reset() {
   if (discoverInterval) clearInterval(discoverInterval);
-  connections.forEach(c => c._pc?.close());
-  connections.clear();
+  peers.forEach(c => c._rtc?.close());
+  peers.clear();
   if (peer) peer.destroy();
-  updatePeers();
-  $('video-container').classList.add('hidden');
-  $('shareCard').classList.add('hidden');
+  updatePeerList();
+  $('screen-container').classList.add('hidden');
+  $('shareSection').classList.add('hidden');
   $('roomInfo').classList.add('hidden');
-  $('roomCard').querySelector('.btn-group').style.display = 'flex';
+  $('roomSection').querySelector('.controls').style.display = 'flex';
 }
 
 /* INIT */
 video.addEventListener('loadedmetadata', () => video.play().catch(() => {}));
-$('roomId').addEventListener('keypress', e => e.key === 'Enter' && (isHost ? createRoom() : joinRoom()));
+$('roomId').addEventListener('keypress', e => e.key === 'Enter' && (isRoomCreator ? createRoom() : joinRoom()));
 window.addEventListener('beforeunload', () => peer?.destroy());
 
-status('Ready • 60fps HD • iOS & Tab Proof');
+status('Ready • Fullscreen • Responsive • Philippines HD');
 </script>
 </body>
 </html>
