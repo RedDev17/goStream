@@ -107,21 +107,11 @@
     background: #faa81a; color: #000; padding: 0.5rem; border-radius: 6px;
     margin: 0.5rem 0; text-align: center; font-size: 0.85rem;
   }
-  .quality-indicator {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(0,0,0,0.7);
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    z-index: 20;
-    backdrop-filter: blur(10px);
 </style>
 </head>
 <body>
 <header>
-  <h1>goStream 🇵🇭</h1>
+  <h1>goStream</h1>
 </header>
 <div class="main">
   <!-- ROOM -->
@@ -145,8 +135,6 @@
 
   <!-- SHARE SECTION -->
   <div class="room-section hidden" id="shareSection">
-    <div class="control-info">
-    </div>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:1.5rem 0">
       <button class="danger" id="stopShareBtn" onclick="stopSharing()">Stop Sharing</button>
       <button class="primary hidden" id="startShareBtn" onclick="startSharing()">Share Screen</button>
@@ -160,7 +148,6 @@
     </div>
     <div id="screenDisplay" class="hidden">
       <div class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</div>
-      <div class="quality-indicator" id="qualityIndicator">PH Optimized</div>
       <video id="screenVideo" autoplay playsinline muted></video>
       <div id="screenOverlay"></div>
     </div>
@@ -751,5 +738,6 @@ window.addEventListener('beforeunload', cleanup);
 </script>
 </body>
 </html>
+
 
 
