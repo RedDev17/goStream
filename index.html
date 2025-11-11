@@ -50,7 +50,6 @@
     color: var(--text-muted);
     font-weight: 500;
   }
-
   .main {
     flex: 1;
     max-width: 1480px;
@@ -58,7 +57,6 @@
     width: 100%;
     padding: 2rem 1.5rem;
   }
-
   .card {
     background: var(--card);
     border-radius: 16px;
@@ -69,7 +67,6 @@
     transition: transform .2s;
   }
   .card:hover { transform: translateY(-2px); }
-
   .input-group {
     margin-bottom: 1.5rem;
   }
@@ -95,7 +92,6 @@
     border-color: var(--primary);
     box-shadow: 0 0 0 4px rgba(88,101,242,.25);
   }
-
   .btn-group {
     display: flex;
     gap: 1rem;
@@ -130,7 +126,6 @@
   .btn-secondary:hover { background: #383840; }
   .btn-danger { background: var(--danger); color: #fff; }
   .btn-danger:hover { background: var(--danger-hover); }
-
   /* VIDEO CONTAINER */
   #video-container {
     position: relative;
@@ -168,7 +163,6 @@
     z-index: 1;
   }
   .placeholder strong { color: #aaa; font-weight: 600; }
-
   .overlay-controls {
     position: absolute;
     top: 16px;
@@ -189,7 +183,6 @@
     transition: .2s;
   }
   .ctrl-btn:hover { background: rgba(0,0,0,.9); }
-
   #qualityBadge {
     position: absolute;
     top: 16px;
@@ -202,7 +195,6 @@
     border-radius: 8px;
     z-index: 20;
   }
-
   #status {
     text-align: center;
     padding: 1rem;
@@ -213,7 +205,6 @@
     font-weight: 500;
     color: var(--text-muted);
   }
-
   .peer-list {
     margin-top: 1.5rem;
     padding-top: 1rem;
@@ -228,7 +219,6 @@
     font-size: .85rem;
     margin: .3rem .3rem 0 0;
   }
-
   .hidden { display: none !important; }
   .mobile-notice {
     background: #faa81a;
@@ -239,7 +229,6 @@
     font-weight: 600;
     margin: 1rem 0;
   }
-
   @media (max-width: 768px) {
     h1 { font-size: 2rem; }
     .btn-group { flex-direction: column; }
@@ -249,13 +238,10 @@
 </style>
 </head>
 <body>
-
 <header>
   <h1>goStream</h1>
 </header>
-
 <div class="main">
-
   <!-- ROOM SETUP -->
   <div class="card" id="roomCard">
     <div class="input-group">
@@ -269,13 +255,11 @@
       <button class="btn-primary" onclick="createRoom()">Create Room</button>
       <button class="btn-secondary" onclick="joinRoom()">Join Room</button>
     </div>
-
     <div id="roomInfo" class="hidden" style="margin-top:1.5rem;padding:1.2rem;background:#141418;border-radius:12px;">
       <div><strong>Room:</strong> <span id="roomName"></span></div>
       <div style="margin-top:.5rem"><strong>ID:</strong> <span id="myId"></span></div>
     </div>
   </div>
-
   <!-- SHARE CONTROLS -->
   <div class="card hidden" id="shareCard">
     <div class="btn-group">
@@ -283,26 +267,22 @@
       <button class="btn-primary hidden" id="startBtn" onclick="startSharing()">Start Sharing</button>
     </div>
   </div>
-
   <!-- VIDEO -->
   <div id="video-container" class="hidden">
     <div class="placeholder" id="placeholder">
       <div><strong>Waiting stream...</strong></div>
     </div>
     <video id="screenVideo" autoplay playsinline></video>
-    <div id="qualityBadge">60fps</div>
+    <div id="qualityBadge" class="hidden">1080p 60fps</div>
     <div class="overlay-controls">
       <button class="ctrl-btn" id="fsBtn" onclick="toggleFullscreen()">Fullscreen</button>
     </div>
   </div>
-
   <div id="status">Status: Not connected</div>
-
   <div class="peer-list hidden" id="peers">
     <strong>Viewers Online:</strong>
     <div id="peerList"></div>
   </div>
-
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -310,9 +290,9 @@
 /* ========== PROFESSIONAL 60FPS GOSTREAM PH ========== */
 let peer = null, myId = null, room = null, isHost = false;
 let sharing = false, stream = null, hostId = null;
+let discoverInterval = null;
 const connections = new Map();
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
 const $ = id => document.getElementById(id);
 
 /* BEST ICE FOR PH (2025) */
@@ -335,7 +315,7 @@ function initPeer(id = null) {
   peer.on('open', id => {
     myId = id;
     $('myId').textContent = id;
-    status('Connected, 'success');
+    status('Connected • Ready', 'success');
     if (isHost) {
       hostId = myId;
       $('shareCard').classList.remove('hidden');
@@ -379,10 +359,11 @@ async function startSharing() {
     $('stopBtn').style.display = 'inline-block';
     $('startBtn').classList.add('hidden');
     $('qualityBadge').textContent = '1080p 60fps';
+    $('qualityBadge').classList.remove('hidden');
 
     connections.forEach(c => c.open && sendStream(c, stream));
     broadcast({ type: 'start', host: myId });
-    status('Streaming HD', 'success');
+    status('Streaming 1080p 60fps', 'success');
 
     stream.getTracks().forEach(t => t.onended = stopSharing);
   } catch (e) {
@@ -419,13 +400,39 @@ function setupConn(conn) {
     if (sharing && stream) sendStream(conn, stream);
   });
 
-  conn.on('data', d => {
+  conn.on('data', async d => {
     if (d.type === 'start') {
       hostId = d.host;
-      status('Receiving 60fps HD stream', 'success');
-      $('qualityBadge').style.display = 'block';
+      status('Receiving 1080p 60fps stream', 'success');
+      $('qualityBadge').classList.remove('hidden');
     }
     if (d.type === 'stop') stopReceive();
+
+    // Handle incoming offer (viewer → host)
+    if (d.type === 'offer' && isHost) {
+      const pc = new RTCPeerConnection({ iceServers });
+      conn._pc = pc;
+      if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+      pc.ontrack = e => {
+        $('screenVideo').srcObject = e.streams[0];
+        $('placeholder').classList.add('hidden');
+      };
+
+      await pc.setRemoteDescription(d.sdp);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      conn.send({ type: 'answer', sdp: pc.localDescription });
+
+      pc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', c: e.candidate });
+    }
+
+    if (d.type === 'answer' && conn._pc) {
+      await conn._pc.setRemoteDescription(d.sdp);
+    }
+    if (d.type === 'ice' && conn._pc) {
+      await conn._pc.addIceCandidate(d.c);
+    }
   });
 
   conn.on('close', () => {
@@ -464,7 +471,7 @@ function joinRoom() {
   isHost = false;
   initPeer();
   showRoom();
-  setInterval(discoverHost, 2500);
+  discoverInterval = setInterval(discoverHost, 2500);
 }
 
 function discoverHost() {
@@ -484,9 +491,9 @@ function showRoom() {
 function stopSharing() {
   if (stream) stream.getTracks().forEach(t => t.stop());
   stream = null; sharing = false;
-  $('stopBtn').style.display =y = 'none';
+  $('stopBtn').style.display = 'none';
   $('startBtn').classList.remove('hidden');
-  $('qualityBadge').style.display = 'none';
+  $('qualityBadge').classList.add('hidden');
   stopReceive();
   broadcast({ type: 'stop' });
   status('Sharing stopped');
@@ -535,6 +542,7 @@ function toggleFullscreen() {
 }
 
 function reset() {
+  if (discoverInterval) clearInterval(discoverInterval);
   connections.clear();
   if (peer) peer.destroy();
   updatePeers();
@@ -545,6 +553,7 @@ function reset() {
 }
 
 /* INIT */
+const screenVideo = $('screenVideo');
 screenVideo.addEventListener('loadedmetadata', () => screenVideo.play());
 $('roomId').addEventListener('keypress', e => e.key === 'Enter' && (isHost ? createRoom() : joinRoom()));
 window.addEventListener('beforeunload', () => peer?.destroy());
@@ -553,6 +562,3 @@ status('Ready • 60fps HD • Philippines Pro');
 </script>
 </body>
 </html>
-
-
-
