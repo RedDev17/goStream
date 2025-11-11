@@ -117,16 +117,6 @@
     font-size: 0.7rem;
     z-index: 20;
     backdrop-filter: blur(10px);
-  }
-  .ph-optimized {
-    background: linear-gradient(45deg, #ce1126, #0038a8);
-    color: white;
-    padding: 0.4rem;
-    border-radius: 6px;
-    text-align: center;
-    font-size: 0.8rem;
-    margin: 0.5rem 0;
-  }
 </style>
 </head>
 <body>
@@ -136,9 +126,6 @@
 <div class="main">
   <!-- ROOM -->
   <div class="room-section" id="roomSection">
-    <div class="ph-optimized">
-      🌏 Optimized for Philippines Connections
-    </div>
     <div class="input-group">
       <label for="roomId">Room Name</label>
       <input type="text" id="roomId" placeholder="room name" autocomplete="off">
@@ -159,9 +146,6 @@
   <!-- SHARE SECTION -->
   <div class="room-section hidden" id="shareSection">
     <div class="control-info">
-      <div style="font-size:0.8rem; margin-top: 0.3rem;">
-        Low Bandwidth • High Latency Optimized
-      </div>
     </div>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:1.5rem 0">
       <button class="danger" id="stopShareBtn" onclick="stopSharing()">Stop Sharing</button>
@@ -767,4 +751,5 @@ window.addEventListener('beforeunload', cleanup);
 </script>
 </body>
 </html>
+
 
