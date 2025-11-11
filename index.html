@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <title>goStream PH • HD Smooth Streaming</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#1e1f22;
@@ -17,11 +15,10 @@
     --text-muted:#949ba4;
     --input-bg:#1a1b1e;
     --border:#383a40;
-    --success:#43b581;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-family:'Segoe UI',Helvetica,Arial,sans-serif;
     background:var(--bg);color:var(--text);min-height:100vh;
     display:flex;flex-direction:column;
     line-height:1.5;
@@ -33,6 +30,7 @@
   }
   h1{font-size:2rem;font-weight:800;margin-bottom:.3rem;letter-spacing:-0.5px}
   .subtitle{font-size:1rem;color:var(--text-muted);font-weight:500}
+
   .main{
     flex:1;max-width:1400px;margin:auto;width:100%;padding:1.5rem;
   }
@@ -49,6 +47,28 @@
     color:var(--text);transition:all .2s;
   }
   input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(88,101,242,.3)}
+
+  /* RESPONSIVE VIDEO CONTAINER */
+  #screen-container{
+    margin:1.5rem 0;border-radius:12px;overflow:hidden;
+    box-shadow:0 8px 32px rgba(0,0,0,.5);
+    background:#000;position:relative;
+    width:100%;
+    aspect-ratio:16/9;
+    max-height:80vh;
+  }
+  #screenDisplay{
+    width:100%;height:100%;position:relative;background:#000;
+  }
+  #screenVideo{
+    width:100%;height:100%;object-fit:contain;background:#000;
+    display:block;
+  }
+  .screen-placeholder{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:#111;color:#72767d;
+    font-size:1.3rem;padding:2rem;text-align:center;z-index:5;
+  }
   .controls{
     display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;
     margin:1.5rem 0;
@@ -56,14 +76,8 @@
   button{
     padding:.9rem 2rem;font-size:1rem;border:none;border-radius:8px;
     cursor:pointer;font-weight:600;transition:all .25s;
-    min-width:140px;position:relative;overflow:hidden;
+    min-width:140px;
   }
-  button::before{
-    content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);
-    transition:.5s;
-  }
-  button:hover::before{left:100%}
   button.primary{background:var(--primary);color:#fff}
   button.primary:hover{background:var(--primary-hover)}
   button.secondary{background:#40444b;color:var(--text)}
@@ -71,27 +85,6 @@
   button.danger{background:var(--danger);color:#fff}
   button.danger:hover{background:#c93b3d}
 
-  /* RESPONSIVE VIDEO CONTAINER */
-  #screen-container{
-    margin:1.5rem 0;border-radius:12px;overflow:hidden;
-    box-shadow:0 8px 32px rgba(0,0,0,.5);
-    background:#000;position:relative;
-    width:100%;aspect-ratio:16/9;max-height:80vh;
-  }
-  #screenDisplay{
-    width:100%;height:100%;position:relative;background:#000;
-  }
-  #screenVideo{
-    width:100%;height:100%;object-fit:contain;background:#000;
-    display:block;will-change:transform;transform:translateZ(0);
-    image-rendering:-webkit-optimize-contrast;
-  }
-  .screen-placeholder{
-    position:absolute;inset:0;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;background:#111;color:#72767d;
-    font-size:1.3rem;padding:2rem;text-align:center;z-index:5;
-  }
-  .screen-placeholder strong{color:#aaa;font-weight:600}
   #status{
     text-align:center;padding:1rem;background:#36393f;
     border-radius:8px;margin-top:1rem;font-size:1rem;
@@ -111,32 +104,18 @@
     margin:1rem 0;text-align:center;font-weight:600;
   }
   .quality-badge{
-    position:absolute;top:12px;left:12px;background:var(--success);color:#000;
-    padding:.4rem .8rem;border-radius:6px;font-size:.8rem;font-weight:700;
-    z-index:20;
-  }
-  .overlay-controls{
-    position:absolute;top:12px;right:12px;display:flex;gap:.8rem;z-index:20;
-  }
-  .ctrl-btn{
-    background:rgba(0,0,0,.7);color:#fff;border:none;padding:.6rem 1rem;
-    border-radius:8px;font-size:.9rem;cursor:pointer;backdrop-filter:blur(10px);
-    transition:.2s;
-  }
-  .ctrl-btn:hover{background:rgba(0,0,0,.9)}
-  @media (max-width:768px){
-    h1{font-size:1.8rem}
-    .controls{flex-direction:column}
-    button{width:100%}
-    #screen-container{aspect-ratio:16/9}
+    position:absolute;top:12px;right:12px;background:rgba(0,0,0,.8);
+    color:#43b581;padding:.4rem .8rem;border-radius:6px;font-size:.8rem;
+    backdrop-filter:blur(10px);z-index:20;
   }
 </style>
 </head>
 <body>
 <header>
   <h1>goStream PH</h1>
-  <div class="subtitle">HD • Smooth • Fullscreen • Philippines Optimized</div>
+  <div class="subtitle">HD • Smooth • Philippines Optimized 🇵🇭</div>
 </header>
+
 <div class="main">
   <!-- ROOM -->
   <div class="room-section" id="roomSection">
@@ -145,7 +124,7 @@
       <input type="text" id="roomId" placeholder="e.g. meeting-pinoy-2025" autocomplete="off">
     </div>
     <div class="mobile-warning" id="mobileWarning">
-      Mobile: Full HD view • Share only on desktop
+      Mobile users can watch in full HD • Sharing only on desktop
     </div>
     <div class="controls">
       <button class="primary" onclick="createRoom()">Create Room</button>
@@ -168,15 +147,12 @@
   <!-- VIDEO DISPLAY -->
   <div id="screen-container" class="hidden">
     <div class="screen-placeholder" id="screenPlaceholder">
-      <div><strong>Waiting for HD stream...</strong></div>
+      <div>Waiting for HD stream...</div>
       <div style="font-size:.9rem;margin-top:1rem">Philippines-optimized • Up to 1080p • 30fps</div>
     </div>
     <div id="screenDisplay" class="hidden">
-      <div class="quality-badge" id="qualityBadge">1080p</div>
-      <div class="overlay-controls">
-        <button class="ctrl-btn" id="fsBtn" onclick="toggleFullscreen()">Fullscreen</button>
-      </div>
-      <video id="screenVideo" autoplay playsinline muted></video>
+      <div class="quality-badge" id="qualityBadge">HD</div>
+      <video id="screenVideo" autoplay playsinline></video>
     </div>
   </div>
 
@@ -189,165 +165,163 @@
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
-/* ========== FINAL: FULLSCREEN + RESPONSIVE + NO BUGS ========== */
+/* ========== PHILIPPINES HD OPTIMIZED GOSTREAM ========== */
 let peer = null, myId = null, roomName = null, isRoomCreator = false;
 let isSharing = false, hostStream = null, currentHost = null;
-let discoverInterval = null;
 const peers = new Map();
 const isMobile = /Android|iPhone|iPad|iPod|Opera Mini/i.test(navigator.userAgent);
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-const $ = id => document.getElementById(id);
-const video = $('screenVideo');
 
-/* PH ICE SERVERS */
+const $ = id => document.getElementById(id);
+
+/* BEST ICE SERVERS FOR PHILIPPINES 2025 */
 function getPHIceServers() {
   return [
+    // Singapore (closest)
     { urls: 'stun:stun.singapore.trueconf.com:3478' },
     { urls: 'stun:stun.syncthing.net:3478' },
+    // Hong Kong
     { urls: 'stun:stun.hk.airasia.com:3478' },
+    // Japan
     { urls: 'stun:stun.jp.zoom.us:3478' },
+    // Global + Twilio
     { urls: 'stun:global.stun.twilio.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
   ];
 }
 
-/* INIT PEER */
+/* INIT PEER WITH PH OPTIMIZED SETTINGS */
 function initPeer(fixedId = null) {
   if (peer) peer.destroy();
   peer = fixedId ? new Peer(fixedId, { config: { iceServers: getPHIceServers() }, debug: 2 })
                 : new Peer({ config: { iceServers: getPHIceServers() }, debug: 2 });
+
   peer.on('open', id => {
     myId = id;
     $('myPeerId').textContent = id;
-    status('Connected • Philippines HD Ready', 'connected');
+    status('Connected • Philippines HD Ready 🇵🇭', 'connected');
     if (isRoomCreator) {
       currentHost = myId;
       $('shareSection').classList.remove('hidden');
       if (!isMobile) $('startShareBtn').classList.remove('hidden');
     }
   });
+
   peer.on('connection', conn => setupConnection(conn));
   peer.on('error', err => {
-    if (['network', 'disconnected'].includes(err.type)) {
+    console.error(err);
+    if (err.type === 'network' || err.type === 'disconnected') {
       setTimeout(() => roomName && initPeer(isRoomCreator ? hashRoomName(roomName) : null), 2500);
     }
   });
 }
 
-/* START SHARING */
+/* HD SMOOTH SHARING */
 async function startSharing() {
   if (isSharing || isMobile) return;
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { cursor: "always", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+      video: {
+        cursor: "always",
+        width: { ideal: 1920, max: 1920 },
+        height: { ideal: 1080, max: 1080 },
+        frameRate: { ideal: 30, max: 30 }
+      },
       audio: true
     });
+
+    // Add mic if not included
     if (!stream.getAudioTracks().length) {
       try {
         const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
         mic.getTracks().forEach(t => stream.addTrack(t));
-      } catch {}
+      } catch(e) {}
     }
+
     hostStream = stream;
     isSharing = true;
-    video.srcObject = stream;
-    video.muted = true;
     $('screenPlaceholder').classList.add('hidden');
     $('screenDisplay').classList.remove('hidden');
+    screenVideo.srcObject = stream;
     $('stopShareBtn').style.display = 'inline-block';
     $('startShareBtn').classList.add('hidden');
-    $('qualityBadge').textContent = '1080p';
-    peers.forEach(conn => conn.open && negotiateStream(conn, stream));
+    $('qualityBadge').textContent = 'HD 1080p';
+
+    peers.forEach(conn => conn.open && replaceStream(conn, stream));
     broadcast({ type: 'sharing_started', host: myId });
-    status('Streaming 1080p • Ultra Smooth', 'connected');
+    status('Streaming HD 1080p 30fps • Smooth as your screen 🇵🇭', 'connected');
+
     stream.getTracks().forEach(t => t.onended = stopSharing);
   } catch(err) {
-    status('Share cancelled', 'error');
+    status('Share cancelled or blocked', 'error');
   }
 }
 
-function negotiateStream(conn, stream) {
-  if (conn._rtc) conn._rtc.close();
-  const rtc = new RTCPeerConnection({ iceServers: getPHIceServers() });
-  conn._rtc = rtc;
-  stream.getTracks().forEach(t => rtc.addTrack(t, stream));
-  rtc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', candidate: e.candidate });
-  rtc.onnegotiationneeded = async () => {
-    try {
-      const offer = await rtc.createOffer();
-      await rtc.setLocalDescription(offer);
-      conn.send({ type: 'offer', sdp: rtc.localDescription });
-    } catch (e) {}
-  };
+function replaceStream(conn, stream) {
+  if (!conn._rtc) return;
+  const rtc = conn._rtc;
+  rtc.getSenders().forEach(sender => {
+    if (sender.track) {
+      const newTrack = stream.getTracks().find(t => t.kind === sender.track.kind);
+      if (newTrack) sender.replaceTrack(newTrack);
+    }
+  });
 }
 
-/* CONNECTION */
+/* CONNECTION HANDLING */
 function setupConnection(conn) {
   if (peers.has(conn.peer)) return;
   peers.set(conn.peer, conn);
   updatePeerList();
 
   conn.on('open', () => {
-    if (isSharing && hostStream) negotiateStream(conn, hostStream);
+    console.log('PH peer connected:', conn.peer);
+    if (isSharing && hostStream) {
+      callPeer(conn, hostStream);
+    }
   });
 
-  conn.on('data', async data => {
-    if (!data?.type) return;
+  conn.on('data', data => {
+    if (!data || !data.type) return;
     if (data.type === 'sharing_started') {
       currentHost = data.host;
-      status('Receiving HD stream', 'connected');
+      status('Receiving HD stream • Philippines optimized', 'connected');
       $('qualityBadge').style.display = 'block';
     }
-    if (data.type === 'sharing_stopped') stopReceiving();
-
-    const rtc = conn._rtc || (conn._rtc = new RTCPeerConnection({ iceServers: getPHIceServers() }));
-
-    if (data.type === 'offer') {
-      if (isRoomCreator && hostStream) hostStream.getTracks().forEach(t => rtc.addTrack(t, hostStream));
-      rtc.ontrack = e => {
-        video.srcObject = e.streams[0];
-        video.muted = false;
-        unlockiOSVideo();
-        $('screenPlaceholder').classList.add('hidden');
-        $('screenDisplay').classList.remove('hidden');
-        $('qualityBadge').style.display = 'block';
-      };
-      await rtc.setRemoteDescription(data.sdp);
-      const answer = await rtc.createAnswer();
-      await rtc.setLocalDescription(answer);
-      conn.send({ type: 'answer', sdp: rtc.localDescription });
+    if (data.type === 'sharing_stopped') {
+      stopReceiving();
     }
+  });
 
+  conn.on('close', () => peers.delete(conn.peer) && updatePeerList());
+}
+
+function callPeer(conn, stream) {
+  const rtc = new RTCPeerConnection({ iceServers: getPHIceServers() });
+  conn._rtc = rtc;
+
+  stream.getTracks().forEach(track => rtc.addTrack(track, stream));
+
+  rtc.onicecandidate = e => e.candidate && conn.send({ type: 'ice', candidate: e.candidate });
+  rtc.onnegotiationneeded = async () => {
+    const offer = await rtc.createOffer();
+    await rtc.setLocalDescription(offer);
+    conn.send({ type: 'offer', sdp: rtc.localDescription });
+  };
+
+  conn.on('data', async data => {
     if (data.type === 'answer') await rtc.setRemoteDescription(data.sdp);
     if (data.type === 'ice') await rtc.addIceCandidate(data.candidate);
   });
 
-  conn.on('close', () => {
-    if (conn._rtc) conn._rtc.close();
-    peers.delete(conn.peer);
-    updatePeerList();
-  });
-}
-
-/* iOS VIDEO UNLOCK */
-function unlockiOSVideo() {
-  if (!isIOS) return;
-  const play = () => {
-    video.play().catch(() => {});
-    document.removeEventListener('touchstart', play);
-    document.removeEventListener('click', play);
+  rtc.ontrack = e => {
+    screenVideo.srcObject = e.streams[0];
+    $('screenPlaceholder').classList.add('hidden');
+    $('screenDisplay').classList.remove('hidden');
+    $('qualityBadge').style.display = 'block';
+    status('HD stream active • Perfect sync', 'connected');
   };
-  document.addEventListener('touchstart', play, { once: true });
-  document.addEventListener('click', play, { once: true });
 }
-
-/* TAB FOCUS = RE-NEGOTIATE */
-window.addEventListener('focus', () => {
-  if (isSharing && hostStream) {
-    peers.forEach(c => c.open && negotiateStream(c, hostStream));
-  }
-});
 
 /* ROOM LOGIC */
 function hashRoomName(name) {
@@ -371,7 +345,7 @@ function joinRoom() {
   isRoomCreator = false;
   initPeer();
   showRoom();
-  discoverInterval = setInterval(discoverHost, 3000);
+  setInterval(() => !currentHost && discoverHost(), 3000);
 }
 
 function discoverHost() {
@@ -390,7 +364,6 @@ function showRoom() {
   $('roomSection').querySelector('.controls').style.display = 'none';
 }
 
-/* STOP */
 function stopSharing() {
   if (hostStream) hostStream.getTracks().forEach(t => t.stop());
   hostStream = null; isSharing = false;
@@ -403,13 +376,12 @@ function stopSharing() {
 }
 
 function stopReceiving() {
-  video.srcObject = null;
+  screenVideo.srcObject = null;
   $('screenDisplay').classList.add('hidden');
   $('screenPlaceholder').classList.remove('hidden');
   currentHost = null;
 }
 
-/* UTILS */
 function broadcast(obj) {
   peers.forEach(c => c.open && c.send(obj));
 }
@@ -421,11 +393,11 @@ function status(txt, type = '') {
 }
 
 function updatePeerList() {
-  const list = $('peerItems');
   const container = $('peerList');
-  list.innerHTML = '';
+  const list = $('peerItems');
   if (!peers.size) return container.classList.add('hidden');
   container.classList.remove('hidden');
+  list.innerHTML = '';
   peers.forEach((_, id) => {
     const el = document.createElement('div');
     el.className = 'peer-item';
@@ -434,20 +406,7 @@ function updatePeerList() {
   });
 }
 
-function toggleFullscreen() {
-  const el = $('screen-container');
-  if (!document.fullscreenElement) {
-    el.requestFullscreen?.() || el.webkitRequestFullscreen?.();
-    $('fsBtn').textContent = 'Exit';
-  } else {
-    document.exitFullscreen?.() || document.webkitExitFullscreen?.();
-    $('fsBtn').textContent = 'Fullscreen';
-  }
-}
-
 function reset() {
-  if (discoverInterval) clearInterval(discoverInterval);
-  peers.forEach(c => c._rtc?.close());
   peers.clear();
   if (peer) peer.destroy();
   updatePeerList();
@@ -457,12 +416,12 @@ function reset() {
   $('roomSection').querySelector('.controls').style.display = 'flex';
 }
 
-/* INIT */
-video.addEventListener('loadedmetadata', () => video.play().catch(() => {}));
+// Init
+screenVideo.addEventListener('loadedmetadata', () => screenVideo.play());
 $('roomId').addEventListener('keypress', e => e.key === 'Enter' && (isRoomCreator ? createRoom() : joinRoom()));
 window.addEventListener('beforeunload', () => peer?.destroy());
 
-status('Ready • Fullscreen • Responsive • Philippines HD');
+status('Ready • Philippines HD Optimized');
 </script>
 </body>
 </html>
