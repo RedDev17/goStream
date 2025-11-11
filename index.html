@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>goStream – Philippines Optimized</title>
+<title>goStream</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -132,7 +132,6 @@
 <body>
 <header>
   <h1>goStream 🇵🇭</h1>
-  <p class="subtitle">Philippines Optimized • Smart/Globe Friendly</p>
 </header>
 <div class="main">
   <!-- ROOM -->
@@ -142,7 +141,7 @@
     </div>
     <div class="input-group">
       <label for="roomId">Room Name</label>
-      <input type="text" id="roomId" placeholder="e.g. pinas" autocomplete="off">
+      <input type="text" id="roomId" placeholder="room name" autocomplete="off">
     </div>
     <div class="mobile-warning" id="mobileWarning">
       Mobile devices can only view streams, not share screens
@@ -154,16 +153,12 @@
     <div id="roomInfo" class="hidden" style="margin-top:1rem;padding:1rem;background:#36393f;border-radius:6px">
       <div><strong>Room:</strong> <span id="currentRoomName"></span></div>
       <div style="margin-top:.4rem"><strong>ID:</strong> <span id="myPeerId"></span></div>
-      <div style="margin-top:.4rem;font-size:.85rem;color:#b9bbbe">
-        🇵🇭 Optimized for PLDT, Globe, Smart, Converge
-      </div>
     </div>
   </div>
 
   <!-- SHARE SECTION -->
   <div class="room-section hidden" id="shareSection">
     <div class="control-info">
-      <strong>Philippines Optimized Streaming</strong>
       <div style="font-size:0.8rem; margin-top: 0.3rem;">
         Low Bandwidth • High Latency Optimized
       </div>
@@ -178,9 +173,6 @@
   <div id="screen-container" class="hidden">
     <div class="screen-placeholder" id="screenPlaceholder">
       <div><strong>Waiting for stream...</strong></div>
-      <div style="font-size:0.9rem; margin-top: 0.5rem; color: #72767d;">
-        Optimized for Philippine internet connections
-      </div>
     </div>
     <div id="screenDisplay" class="hidden">
       <div class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</div>
@@ -775,3 +767,4 @@ window.addEventListener('beforeunload', cleanup);
 </script>
 </body>
 </html>
+
