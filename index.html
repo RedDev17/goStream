@@ -335,7 +335,7 @@ function initPeer(id = null) {
   peer.on('open', id => {
     myId = id;
     $('myId').textContent = id;
-    status('Connected • 60fps Ready', 'success');
+    status('Connected, 'success');
     if (isHost) {
       hostId = myId;
       $('shareCard').classList.remove('hidden');
@@ -382,7 +382,7 @@ async function startSharing() {
 
     connections.forEach(c => c.open && sendStream(c, stream));
     broadcast({ type: 'start', host: myId });
-    status('Streaming 1080p 60fps • Ultra Smooth', 'success');
+    status('Streaming HD', 'success');
 
     stream.getTracks().forEach(t => t.onended = stopSharing);
   } catch (e) {
@@ -553,5 +553,6 @@ status('Ready • 60fps HD • Philippines Pro');
 </script>
 </body>
 </html>
+
 
 
