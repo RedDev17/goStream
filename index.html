@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>goStream</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#23272a">
+<style>
+  :root{
+    --bg:#2c2f33;
+    --sidebar:#23272a;
+    --primary:#5865f2;
+    --primary-hover:#4752c4;
+    --danger:#ed4245;
+    --danger-hover:#c93b3d;
+    --text:#dcddde;
+    --text-muted:#72767d;
+    --input-bg:#1e1f22;
+    --input-border:#40444b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'gg sans','Helvetica Neue',Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);min-height:100vh;
+    display:flex;flex-direction:column;
+  }
+  header{
+    background:var(--sidebar);padding:1rem;text-align:center;
+    border-bottom:1px solid #000;
+  }
+  h1{font-size:1.8rem;font-weight:700;margin-bottom:.3rem}
+  .subtitle{font-size:.9rem;color:var(--text-muted)}
+  .main{flex:1;max-width:1200px;margin:auto;width:100%;padding:1rem}
+  .room-section{
+    background:var(--sidebar);border-radius:8px;padding:1.5rem;
+    margin-bottom:1.5rem;box-shadow:0 2px 6px rgba(0,0,0,.3);
+  }
+  .input-group{margin-bottom:1rem}
+  label{display:block;margin-bottom:.5rem;font-weight:600;font-size:.9rem;color:var(--text-muted)}
+  input{
+    width:100%;padding:.75rem 1rem;font-size:1rem;border-radius:6px;
+    border:1px solid var(--input-border);background:var(--input-bg);
+    color:var(--text);transition:border .2s;
+  }
+  input:focus{outline:none;border-color:var(--primary)}
+  input::placeholder{color:var(--text-muted);opacity:.7}
+ 
+  /* OPTIMIZED VIDEO CONTAINER */
+  #screen-container{
+    margin:1rem 0;border-radius:8px;overflow:hidden;
+    box-shadow:0 4px 12px rgba(0,0,0,.4);background:#000;position:relative;
+    height: calc(100vh - 280px);
+    min-height: 300px;
+    width: 100%;
+  }
+  #screenDisplay{
+    width:100%;height:100%;background:#111;position:relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #screenDisplay:fullscreen {
+    background: #000;
+  }
+  #screenDisplay:-webkit-full-screen {
+    background: #000;
+  }
+  #screenDisplay:-moz-full-screen {
+    background: #000;
+  }
+  #screenDisplay:-ms-fullscreen {
+    background: #000;
+  }
+  #screenVideo{
+    width:100%;height:100%;object-fit:contain;background:#000;
+    transform: translateZ(0);
+    display: block;
+    min-height: 100%;
+  }
+  .screen-placeholder{
+    width:100%;height:100%;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:#1a1a1a;color:#72767d;
+    font-size:1.1rem;padding:2rem;text-align:center
+  }
+  #screenOverlay{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10}
+  .fullscreen-btn{
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    background:rgba(0,0,0,.7);padding:.35rem .75rem;border-radius:16px;
+    font-size:.75rem;z-index:20;cursor:pointer;color:#fff;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .fullscreen-btn:hover {
+    background: rgba(0,0,0,.9);
+    transform: translateX(-50%) scale(1.05);
+  }
+  .fullscreen-btn:active {
+    transform: translateX(-50%) scale(0.95);
+  }
+  .controls{
+    display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;
+    margin:1.5rem 0;padding:0 1rem
+  }
+  button{
+    padding:.75rem 1.5rem;font-size:.95rem;border:none;border-radius:6px;
+    cursor:pointer;font-weight:600;transition:all .2s;
+    min-width:120px
+  }
+  button.primary{background:var(--primary);color:#fff}
+  button.primary:hover{background:var(--primary-hover)}
+  button.secondary{background:#40444b;color:var(--text)}
+  button.secondary:hover{background:#4f545c}
+  button.danger{background:var(--danger);color:#fff}
+  button.danger:hover{background:var(--danger-hover)}
+  #status{
+    text-align:center;padding:.75rem;background:#36393f;
+    border-radius:6px;margin-top:1rem;font-size:.9rem;
+    color:var(--text-muted)
+  }
+  .peer-list{
+    margin-top:1rem;padding-top:1rem;border-top:1px solid #40444b;
+    font-size:.85rem;color:var(--text-muted)
+  }
+  .peer-item{
+    display:inline-block;padding:.3rem .7rem;margin:.2rem;
+    background:#40444b;border-radius:4px
+  }
+  .hidden{display:none!important}
+  .control-info{
+    text-align:center;margin-top:.5rem;padding:.6rem;
+    background:#36393f;border-radius:6px;font-size:.9rem;color:var(--text-muted)
+  }
+  .mobile-warning {
+    background: #faa81a; color: #000; padding: 0.5rem; border-radius: 6px;
+    margin: 0.5rem 0; text-align: center; font-size: 0.85rem;
+  }
+
+  /* RESPONSIVE IMPROVEMENTS */
+  @media (max-width: 768px) {
+    header { padding: 0.75rem; }
+    h1 { font-size: 1.5rem; }
+    .main { padding: 0.5rem; }
+    .room-section { padding: 1rem; margin-bottom: 1rem; }
+    .controls { gap: 0.5rem; justify-content: center; }
+    button { 
+      padding: 0.6rem 1rem; 
+      font-size: 0.9rem; 
+      min-width: auto; 
+      flex: 1;
+      max-width: 150px;
+    }
+    #screen-container {
+      height: calc(100vh - 220px);
+      min-height: 250px;
+      margin: 0.5rem 0;
+    }
+    #screenVideo {
+      min-height: 250px;
+    }
+    .fullscreen-btn {
+      top: 5px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.7rem;
+    }
+    .peer-item {
+      display: block;
+      margin: 0.2rem 0;
+    }
+    .screen-placeholder {
+      min-height: 250px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    header { padding: 0.5rem; }
+    h1 { font-size: 1.3rem; margin-bottom: 0.2rem; }
+    .main { padding: 0.5rem; }
+    .room-section { padding: 0.75rem; margin-bottom: 0.75rem; }
+    .controls {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    button {
+      width: 100%;
+      max-width: none;
+      padding: 0.75rem;
+    }
+    .input-group { margin-bottom: 0.75rem; }
+    #screen-container {
+      height: calc(100vh - 200px);
+      min-height: 200px;
+      margin: 0.5rem 0;
+      border-radius: 4px;
+    }
+    #screenVideo {
+      min-height: 200px;
+    }
+    .screen-placeholder {
+      min-height: 200px;
+      padding: 1rem;
+      font-size: 0.9rem;
+    }
+    #status {
+      font-size: 0.85rem;
+      padding: 0.6rem;
+    }
+  }
+
+  @media (max-height: 600px) and (orientation: landscape) {
+    #screen-container {
+      height: calc(100vh - 180px);
+      min-height: 200px;
+    }
+    header {
+      padding: 0.5rem;
+    }
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 0;
+    }
+  }
+
+  /* PERFORMANCE: Reduce motion for better perf */
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>goStream</h1>
+</header>
+<div class="main">
+  <!-- ROOM -->
+  <div class="room-section" id="roomSection">
+    <div class="input-group">
+      <label for="roomId">Room Name</label>
+      <input type="text" id="roomId" placeholder="room name" autocomplete="off">
+    </div>
+    <div class="mobile-warning" id="mobileWarning">
+      Mobile devices can only view streams, not share screens
+    </div>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <button class="primary" onclick="createRoom()">Create Room</button>
+      <button class="secondary" onclick="joinRoom()">Join Room</button>
+    </div>
+    <div id="roomInfo" class="hidden" style="margin-top:1rem;padding:1rem;background:#36393f;border-radius:6px">
+      <div><strong>Room:</strong> <span id="currentRoomName"></span></div>
+      <div style="margin-top:.4rem"><strong>ID:</strong> <span id="myPeerId"></span></div>
+    </div>
+  </div>
+  <!-- SHARE SECTION -->
+  <div class="room-section hidden" id="shareSection">
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:1.5rem 0">
+      <button class="danger" id="stopShareBtn" onclick="stopSharing()">Stop Sharing</button>
+      <button class="primary hidden" id="startShareBtn" onclick="startSharing()">Share Screen</button>
+    </div>
+  </div>
+  <!-- SCREEN DISPLAY -->
+  <div id="screen-container" class="hidden">
+    <div class="screen-placeholder" id="screenPlaceholder">
+      <div><strong>Waiting for stream...</strong></div>
+    </div>
+    <div id="screenDisplay" class="hidden">
+      <div class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</div>
+      <video id="screenVideo" autoplay playsinline muted></video>
+      <div id="screenOverlay"></div>
+    </div>
+  </div>
+  <!-- STATUS -->
+  <div id="status">Status: Not connected</div>
+  <!-- PEERS -->
+  <div class="peer-list hidden" id="peerList">
+    <strong>Connected:</strong>
+    <div id="peerItems"></div>
+  </div>
+</div>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script>
+/* ---------- GLOBALS ---------- */
+let peer = null;
+let myId = null;
+let roomName = null;
+let isRoomCreator = false;
+let isSharing = false;
+let currentHost = null;
+let hostStream = null;
+let autoShareTimeout = null;
+let discoveryInterval = null;
+const peers = new Map();
+// Smooth streaming: Network quality monitoring
+let networkQuality = 'good'; // good, medium, poor
+let statsInterval = null;
+let streamQuality = { fps: 30, bitrate: 2500000, resolution: '1280x720' };
+
+// Detect mobile and Philippines ISPs
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isAndroid = /Android/i.test(navigator.userAgent);
+
+/* ---------- UI ELEMENTS ---------- */
+const $ = id => document.getElementById(id);
+// Cache DOM elements for better performance
+let screenVideo, screenPlaceholder, screenDisplay, fullscreenBtn, startShareBtn, stopShareBtn;
+
+// Initialize DOM elements after page loads
+function initDOMElements() {
+  screenVideo = $('screenVideo');
+  screenPlaceholder = $('screenPlaceholder');
+  screenDisplay = $('screenDisplay');
+  fullscreenBtn = $('fullscreenBtn');
+  startShareBtn = $('startShareBtn');
+  stopShareBtn = $('stopShareBtn');
+  
+  if (!screenVideo || !screenPlaceholder || !screenDisplay || !fullscreenBtn || !startShareBtn || !stopShareBtn) {
+    console.error('Critical DOM elements not found');
+    return false;
+  }
+  return true;
+}
+/* ---------- PHILIPPINES OPTIMIZED ICE SERVERS (2025 UPDATED) ---------- */
+function getPhilippinesIceServers() {
+  return [
+    // Primary: Google STUN (reliable global, low latency to PH)
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+
+    // Secondary: Cloudflare (fast CDN edges in Asia - Philippines optimized)
+    { urls: 'stun:stun.cloudflare.com:3478' },
+
+    // Tertiary: Open Relay Project (free reliable TURN for fallback)
+    { 
+      urls: [
+        'stun:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+      credentialType: 'password'
+    },
+
+    // Additional free fast servers for Philippines
+    { urls: 'stun:stun.syncthing.net:3478' }, // Singapore (close to PH)
+    { urls: 'stun:stun.services.mozilla.com:3478' }, // Global Mozilla
+    { urls: 'stun:stun.nextcloud.com:3478' }, // Nextcloud STUN
+    { urls: 'stun:stun.stunprotocol.org:3478' }, // STUN Protocol
+    
+    // Additional TURN servers (free tier)
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ];
+}
+/* ---------- PHILIPPINES OPTIMIZED PEER CONFIG ---------- */
+function initPeer(fixedId = null) {
+  if (peer) peer.destroy();
+ 
+  const peerOptions = {
+    debug: 2,
+    config: {
+      iceServers: getPhilippinesIceServers(),
+      iceCandidatePoolSize: 30, // Increased for better candidate gathering
+      iceTransportPolicy: 'all',
+      rtcpMuxPolicy: 'require',
+      bundlePolicy: 'max-bundle',
+      // Optimize for high-latency PH connections
+      iceConnectionTimeout: 15000, // Longer timeout
+      iceCheckingTimeout: 7000
+    }
+  };
+  
+  // Smooth streaming: Configure SDP for better performance
+  if (typeof RTCRtpTransceiver !== 'undefined') {
+    peerOptions.config.sdpSemantics = 'unified-plan';
+  }
+ 
+  console.log('🇵🇭 Using 2025 Philippines-optimized ICE servers:', getPhilippinesIceServers());
+ 
+  peer = fixedId ? new Peer(fixedId, peerOptions) : new Peer(peerOptions);
+  peer.on('open', id => {
+    myId = id;
+    $('myPeerId').textContent = id;
+    status(`Connected – Philippines Optimized 🇵🇭`, 'connected');
+    if (isRoomCreator) {
+      currentHost = myId;
+      $('shareSection').classList.remove('hidden');
+     
+      if (!isMobile && startShareBtn) {
+        startShareBtn.classList.remove('hidden');
+        autoStartHDAudioShare();
+      }
+    } else {
+      discoverPeers();
+    }
+  });
+  peer.on('connection', conn => {
+    if (!peers.has(conn.peer)) {
+      setupPhilippinesConnection(conn);
+    }
+  });
+ 
+  peer.on('error', err => {
+    console.error('PeerJS error:', err);
+    status(`Connection issue: ${err.type}`, 'error');
+   
+    // Aggressive reconnection for PH unstable networks
+    if (['network', 'disconnected', 'socket-error'].includes(err.type)) {
+      setTimeout(() => {
+        if (roomName) {
+          console.log('🇵🇭 Attempting reconnection...');
+          initPeer(isRoomCreator ? hashRoomName(roomName) : null);
+        }
+      }, 3000); // Slightly longer delay
+    }
+  });
+}
+/* ---------- PHILIPPINES OPTIMIZED STREAMING (ENHANCED) ---------- */
+async function startSharing() {
+  if (isSharing) return;
+ 
+  if (isMobile) {
+    status('Screen sharing not supported on mobile devices', 'error');
+    return;
+  }
+ 
+  try {
+    // Smooth streaming: Adaptive constraints based on network quality
+    const getAdaptiveConstraints = () => {
+      if (networkQuality === 'poor') {
+        return {
+          width: { ideal: 854, max: 1280 },
+          height: { ideal: 480, max: 720 },
+          frameRate: { ideal: 20, max: 25 }
+        };
+      } else if (networkQuality === 'medium') {
+        return {
+          width: { ideal: 1280, max: 1600 },
+          height: { ideal: 720, max: 900 },
+          frameRate: { ideal: 25, max: 30 }
+        };
+      } else {
+        return {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 30 }
+        };
+      }
+    };
+    
+    const videoConstraints = getAdaptiveConstraints();
+    
+    // 2025 PH-optimized constraints: Adaptive based on connection
+    const constraints = {
+      video: {
+        cursor: "always",
+        ...videoConstraints,
+        // Smooth streaming: Optimize for smooth playback
+        resizeMode: "crop-and-scale",
+        displaySurface: "monitor"
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 2, // Stereo for better quality
+        sampleRate: 48000,
+        sampleSize: 16,
+        volume: 1.0,
+        // Smooth streaming: Optimize audio for low latency
+        latency: 0.01,
+        googEchoCancellation: true,
+        googNoiseSuppression: true,
+        googAutoGainControl: true,
+        googHighpassFilter: true,
+        googTypingNoiseDetection: true
+      }
+    };
+    const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+    // Add optimized audio if missing
+    if (!stream.getAudioTracks().length) {
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            channelCount: 2,
+            sampleRate: 48000
+          }
+        });
+        audioStream.getAudioTracks().forEach(track => {
+          stream.addTrack(track);
+        });
+      } catch (e) {
+        console.warn("Could not add audio:", e);
+      }
+    }
+    hostStream = stream;
+    
+    // Ensure DOM elements are ready
+    if (!screenVideo || !screenPlaceholder || !screenDisplay) {
+      initDOMElements();
+    }
+    
+    if (!screenVideo) {
+      console.error('Screen video element not found');
+      return;
+    }
+    
+    optimizeVideoElement();
+    screenVideo.srcObject = stream;
+    screenVideo.muted = true;
+    screenVideo.style.opacity = '1';
+    screenVideo.style.visibility = 'visible';
+    screenVideo.style.display = 'block';
+   
+    // Ensure video plays
+    screenVideo.play().catch(err => {
+      console.warn('Auto-play prevented, will play on user interaction:', err);
+    });
+   
+    if (screenPlaceholder) screenPlaceholder.classList.add('hidden');
+    if (screenDisplay) screenDisplay.classList.remove('hidden');
+   
+    // Send PH-optimized stream to all peers
+    peers.forEach(conn => {
+      if (conn.open) {
+        sendPhilippinesOptimizedStream(conn, stream);
+      }
+    });
+    
+    if (stopShareBtn) stopShareBtn.style.display = 'inline-block';
+    if (startShareBtn) startShareBtn.classList.add('hidden');
+    
+    isSharing = true;
+    broadcast({ type: 'sharing_started', host: myId });
+    status('Streaming - Philippines Optimized 🇵🇭 (2025 Enhanced)', 'connected');
+    
+    stream.getTracks().forEach(track => {
+      track.onended = () => {
+        stopSharing();
+      };
+      track.onerror = (err) => {
+        console.error('Track error:', err);
+        status('Stream error occurred', 'error');
+      };
+    });
+   
+  } catch (err) {
+    console.error("Share failed:", err);
+    status('Share failed: ' + err.message, 'error');
+  }
+}
+function sendPhilippinesOptimizedStream(conn, stream) {
+  if (!conn.open) return;
+ 
+  const rtc = new RTCPeerConnection({
+    iceServers: getPhilippinesIceServers(),
+    iceCandidatePoolSize: 30,
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
+    iceTransportPolicy: 'all',
+    // Smooth streaming: Optimize for low latency
+    sdpSemantics: 'unified-plan'
+  });
+  
+  // Smooth streaming: Configure RTC for smooth playback
+  rtc.addEventListener('connectionstatechange', () => {
+    if (rtc.connectionState === 'connected' || rtc.connectionState === 'connecting') {
+      // Start quality monitoring
+      startQualityMonitoring(rtc, conn);
+    }
+  });
+ 
+  // Smooth streaming: Enhanced video encoding settings
+  stream.getTracks().forEach(track => {
+    const sender = rtc.addTrack(track, stream);
+   
+    if (track.kind === 'video') {
+      // Wait for sender to be ready
+      setTimeout(() => {
+        try {
+          const parameters = sender.getParameters();
+          if (!parameters.encodings) {
+            parameters.encodings = [{}];
+          }
+          
+          // Smooth streaming: Adaptive bitrate based on network quality
+          let bitrate = 2500000; // 2.5 Mbps default
+          let framerate = 30;
+          
+          if (networkQuality === 'poor') {
+            bitrate = 1500000; // 1.5 Mbps for poor networks
+            framerate = 25;
+          } else if (networkQuality === 'medium') {
+            bitrate = 2000000; // 2 Mbps for medium networks
+            framerate = 28;
+          }
+          
+          // Smooth streaming: Multi-layer encoding for adaptation
+          parameters.encodings[0].maxBitrate = bitrate;
+          parameters.encodings[0].minBitrate = bitrate * 0.5; // Allow 50% reduction
+          parameters.encodings[0].maxFramerate = framerate;
+          parameters.encodings[0].scaleResolutionDownBy = 1.0;
+          // Smooth streaming: Prioritize framerate for smooth playback
+          parameters.degradationPreference = 'maintain-framerate';
+          // Smooth streaming: Enable adaptive bitrate
+          parameters.encodings[0].adaptivePtime = false;
+          
+          sender.setParameters(parameters).catch(err => {
+            console.warn('Failed to set encoding parameters:', err);
+          });
+          
+          streamQuality.bitrate = bitrate;
+          streamQuality.fps = framerate;
+          
+        } catch (err) {
+          console.warn('Error setting video parameters:', err);
+        }
+      }, 100);
+    } else if (track.kind === 'audio') {
+      // Smooth streaming: Optimize audio encoding
+      setTimeout(() => {
+        try {
+          const parameters = sender.getParameters();
+          if (parameters.encodings && parameters.encodings[0]) {
+            parameters.encodings[0].maxBitrate = 64000; // 64 kbps for audio
+            sender.setParameters(parameters).catch(() => {});
+          }
+        } catch (err) {
+          // Ignore audio parameter errors
+        }
+      }, 100);
+    }
+  });
+ 
+  // Enhanced ICE batching for better perf
+  let iceBatch = [];
+  const sendIceBatch = () => {
+    if (iceBatch.length > 0) {
+      conn.send({
+        type: 'ice_batch',
+        candidates: iceBatch,
+        region: 'ph'
+      });
+      iceBatch = [];
+    }
+  };
+ 
+  rtc.onicecandidate = event => {
+    if (event.candidate) {
+      iceBatch.push(event.candidate);
+      if (iceBatch.length >= 3) { // Larger batch for efficiency
+        sendIceBatch();
+      }
+    } else {
+      sendIceBatch();
+    }
+  };
+ 
+  // Smooth streaming: Faster negotiation with optimized SDP
+  rtc.onnegotiationneeded = async () => {
+    try {
+      const offer = await rtc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true,
+        voiceActivityDetection: false // Smooth streaming: Disable VAD for consistent quality
+      });
+      
+      // Smooth streaming: Optimize SDP for low latency
+      offer.sdp = optimizeSDP(offer.sdp);
+      
+      await rtc.setLocalDescription(offer);
+      conn.send({
+        type: 'offer',
+        sdp: rtc.localDescription,
+        optimized: 'ph-2025-smooth'
+      });
+    } catch (err) {
+      console.error('PH negotiation error:', err);
+    }
+  };
+
+  conn._rtc = rtc;
+}
+
+// Smooth streaming: Optimize SDP for smooth playback
+function optimizeSDP(sdp) {
+  // Remove bandwidth limitations that might cause buffering
+  sdp = sdp.replace(/b=AS:.*\r\n/g, '');
+  sdp = sdp.replace(/b=TIAS:.*\r\n/g, '');
+  
+  // Add smooth streaming optimizations
+  if (!sdp.includes('x-google-flag:conference')) {
+    sdp = sdp.replace(/a=mid:0\r\n/g, 'a=mid:0\r\na=x-google-flag:conference\r\n');
+  }
+  
+  // Optimize for low latency
+  sdp = sdp.replace(/a=fmtp:111/g, 'a=fmtp:111 x-google-start-bitrate=800');
+  
+  return sdp;
+}
+
+// Smooth streaming: Monitor network quality and adjust
+function startQualityMonitoring(rtc, conn) {
+  // Use connection-specific interval to avoid conflicts
+  if (conn._statsInterval) return;
+  
+  conn._statsInterval = setInterval(async () => {
+    if (!rtc || !screenVideo) return;
+    
+    try {
+      const stats = await rtc.getStats();
+      let videoStats = null;
+      let audioStats = null;
+      
+      stats.forEach(report => {
+        if (report.type === 'outbound-rtp' && report.mediaType === 'video') {
+          videoStats = report;
+        } else if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
+          videoStats = report;
+        }
+      });
+      
+      if (videoStats) {
+        // Calculate frames per second
+        if (videoStats.framesPerSecond !== undefined) {
+          streamQuality.fps = Math.round(videoStats.framesPerSecond);
+        }
+        
+        // Monitor packet loss
+        const packetsLost = videoStats.packetsLost || 0;
+        const packetsTotal = videoStats.packetsReceived || videoStats.packetsSent || 1;
+        const lossRate = packetsLost / packetsTotal;
+        
+        // Smooth streaming: Adjust quality based on packet loss
+        if (lossRate > 0.05) { // > 5% packet loss
+          networkQuality = 'poor';
+          adjustStreamQuality('poor', rtc);
+        } else if (lossRate > 0.02) { // > 2% packet loss
+          networkQuality = 'medium';
+          adjustStreamQuality('medium', rtc);
+        } else {
+          networkQuality = 'good';
+          adjustStreamQuality('good', rtc);
+        }
+        
+        // Monitor jitter
+        const jitter = videoStats.jitter || 0;
+        if (jitter > 50) { // High jitter
+          console.log('High jitter detected, adjusting quality');
+          networkQuality = networkQuality === 'good' ? 'medium' : 'poor';
+        }
+      }
+    } catch (err) {
+      console.warn('Stats monitoring error:', err);
+    }
+  }, 2000); // Check every 2 seconds
+}
+
+// Smooth streaming: Dynamically adjust stream quality
+function adjustStreamQuality(quality, rtc) {
+  if (!rtc || !hostStream || !isSharing) return;
+  
+  const senders = rtc.getSenders();
+  senders.forEach(sender => {
+    if (sender.track && sender.track.kind === 'video') {
+      try {
+        const parameters = sender.getParameters();
+        if (parameters.encodings && parameters.encodings[0]) {
+          let bitrate = 2500000;
+          let framerate = 30;
+          
+          if (quality === 'poor') {
+            bitrate = 1500000;
+            framerate = 20;
+          } else if (quality === 'medium') {
+            bitrate = 2000000;
+            framerate = 25;
+          }
+          
+          parameters.encodings[0].maxBitrate = bitrate;
+          parameters.encodings[0].minBitrate = bitrate * 0.5;
+          parameters.encodings[0].maxFramerate = framerate;
+          
+          sender.setParameters(parameters).catch(() => {});
+          
+          streamQuality.bitrate = bitrate;
+          streamQuality.fps = framerate;
+        }
+      } catch (err) {
+        console.warn('Quality adjustment error:', err);
+      }
+    }
+  });
+}
+/* ---------- PHILIPPINES CONNECTION SETUP ---------- */
+function setupPhilippinesConnection(conn) {
+  if (peers.has(conn.peer)) return;
+ 
+  peers.set(conn.peer, conn);
+  updatePeerList();
+  conn.on('open', () => {
+    console.log('🇵🇭 Connected to peer:', conn.peer);
+    if (isSharing && hostStream) {
+      sendPhilippinesOptimizedStream(conn, hostStream);
+    }
+  });
+ 
+  conn.on('data', raw => {
+    let data;
+    try {
+      data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (e) {
+      return;
+    }
+   
+    if (!data.type) return;
+   
+    if (['offer', 'answer', 'ice', 'ice_batch'].includes(data.type)) {
+      handlePhilippinesSDP(data, conn);
+      return;
+    }
+   
+    if (data.type === 'sharing_started') {
+      currentHost = data.host;
+      status('Receiving Philippines-optimized stream 🇵🇭', 'connected');
+      if (fullscreenBtn) fullscreenBtn.style.display = 'block';
+    } else if (data.type === 'sharing_stopped') {
+      currentHost = null;
+      if (screenPlaceholder) screenPlaceholder.classList.remove('hidden');
+      if (screenDisplay) screenDisplay.classList.add('hidden');
+      if (screenVideo) {
+        screenVideo.srcObject = null;
+        screenVideo.pause();
+      }
+      if (fullscreenBtn) fullscreenBtn.style.display = 'none';
+      status('Stream ended', 'connected');
+    }
+  });
+ 
+  conn.on('close', () => {
+    console.log('🇵🇭 Connection closed:', conn.peer);
+    // Smooth streaming: Clean up quality monitoring
+    if (conn._statsInterval) {
+      clearInterval(conn._statsInterval);
+      conn._statsInterval = null;
+    }
+    peers.delete(conn.peer);
+    updatePeerList();
+    // Auto-reconnect logic
+    if (roomName && !isRoomCreator) {
+      setTimeout(discoverPeers, 2000);
+    }
+  });
+ 
+  conn.on('error', err => {
+    console.error('PH Connection error:', err);
+    peers.delete(conn.peer);
+    updatePeerList();
+  });
+}
+function handlePhilippinesSDP(data, conn) {
+  let rtc = conn._rtc;
+ 
+  if (!rtc) {
+    rtc = new RTCPeerConnection({
+      iceServers: getPhilippinesIceServers(),
+      iceCandidatePoolSize: 30,
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+      sdpSemantics: 'unified-plan'
+    });
+    conn._rtc = rtc;
+    
+    // Smooth streaming: Start quality monitoring for receivers
+    rtc.addEventListener('connectionstatechange', () => {
+      if (rtc.connectionState === 'connected') {
+        startQualityMonitoring(rtc, conn);
+      }
+    });
+   
+    rtc.ontrack = event => {
+      if (event.streams && event.streams[0]) {
+        console.log('Received stream track:', event.track.kind);
+        
+        // Ensure DOM elements are ready
+        if (!screenVideo || !screenPlaceholder || !screenDisplay) {
+          initDOMElements();
+        }
+        
+        if (!screenVideo) {
+          console.error('Screen video element not found');
+          return;
+        }
+        
+        optimizeVideoElement();
+        
+        // Set stream source
+        const stream = event.streams[0];
+        screenVideo.srcObject = stream;
+        
+        // Ensure video is visible
+        screenVideo.style.opacity = '1';
+        screenVideo.style.visibility = 'visible';
+        screenVideo.style.display = 'block';
+        
+        // Initially muted for autoplay compatibility
+        screenVideo.muted = true;
+        
+        screenPlaceholder.classList.add('hidden');
+        screenDisplay.classList.remove('hidden');
+        
+        if (fullscreenBtn) {
+          fullscreenBtn.style.display = 'block';
+        }
+       
+        // Unlock media after a short delay to ensure stream is ready
+        setTimeout(() => {
+          unlockMedia();
+        }, 100);
+        
+        status('Stream active - PH Optimized 🇵🇭 (2025)', 'connected');
+        
+        // Monitor stream health
+        event.track.onended = () => {
+          console.log('Track ended');
+          status('Stream disconnected', 'error');
+          screenPlaceholder.classList.remove('hidden');
+          screenDisplay.classList.add('hidden');
+        };
+      }
+    };
+   
+    rtc.onicecandidate = event => {
+      if (event.candidate) {
+        conn.send({ type: 'ice', candidate: event.candidate });
+      }
+    };
+   
+    // Handle connection state for better UX
+    rtc.onconnectionstatechange = () => {
+      console.log('RTC Connection state:', rtc.connectionState);
+      if (rtc.connectionState === 'failed') {
+        rtc.restartIce();
+      }
+    };
+  }
+ 
+  if (data.type === 'offer') {
+    rtc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+      .then(() => rtc.createAnswer())
+      .then(answer => rtc.setLocalDescription(answer))
+      .then(() => {
+        conn.send({ type: 'answer', sdp: rtc.localDescription });
+      })
+      .catch(err => {
+        console.error('PH SDP handling error:', err);
+      });
+  } else if (data.type === 'answer') {
+    // Smooth streaming: Optimize answer SDP
+    const optimizedSdp = optimizeSDP(data.sdp.sdp);
+    const answer = new RTCSessionDescription({
+      type: data.sdp.type,
+      sdp: optimizedSdp
+    });
+    
+    rtc.setRemoteDescription(answer)
+      .catch(err => {
+        console.error('PH Answer handling error:', err);
+      });
+  } else if (data.type === 'ice' && data.candidate) {
+    rtc.addIceCandidate(new RTCIceCandidate(data.candidate))
+      .catch(err => {
+        console.error('PH ICE candidate error:', err);
+      });
+  } else if (data.type === 'ice_batch' && data.candidates) {
+    data.candidates.forEach(candidate => {
+      rtc.addIceCandidate(new RTCIceCandidate(candidate))
+        .catch(err => {
+          console.error('PH Batch ICE candidate error:', err);
+        });
+    });
+  }
+}
+/* ---------- OPTIMIZATION FUNCTIONS (ENHANCED) ---------- */
+function optimizeVideoElement() {
+  if (!screenVideo) return;
+  const video = screenVideo;
+  
+  // Reset video state
+  video.style.transform = 'translateZ(0)';
+  video.style.willChange = 'transform';
+  video.style.display = 'block';
+  video.style.width = '100%';
+  video.style.height = '100%';
+  video.style.objectFit = 'contain';
+  video.style.background = '#000';
+  
+  video.setAttribute('autoplay', 'true');
+  video.setAttribute('muted', 'true');
+  video.setAttribute('playsinline', 'true');
+  video.setAttribute('webkit-playsinline', 'true');
+  video.preload = 'auto';
+  video.playsInline = true;
+  
+  // Smooth streaming: Optimize video element for smooth playback
+  video.setAttribute('crossorigin', 'anonymous');
+  
+  // Smooth streaming: Reduce buffering
+  if (video.buffered && video.buffered.length > 0) {
+    video.currentTime = video.buffered.end(video.buffered.length - 1) - 0.1;
+  }
+  
+  // Smooth streaming: Disable video controls for better performance
+  video.controls = false;
+  
+  // Smooth streaming: Optimize playback rate
+  video.playbackRate = 1.0;
+  video.defaultPlaybackRate = 1.0;
+  
+  // Smooth streaming: Hardware acceleration
+  video.style.transform = 'translateZ(0) scale(1)';
+  video.style.webkitTransform = 'translateZ(0) scale(1)';
+  video.style.willChange = 'transform, contents';
+  
+  // Smooth streaming: CSS optimizations
+  video.style.imageRendering = 'crisp-edges';
+  video.style.imageRendering = '-webkit-optimize-contrast';
+
+  if (isIOS) {
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('x-webkit-airplay', 'deny');
+    video.playsInline = true;
+  }
+  
+  if (isAndroid) {
+    video.setAttribute('playsinline', 'true');
+    video.playsInline = true;
+  }
+  
+  // Ensure video is visible
+  video.style.opacity = '1';
+  video.style.visibility = 'visible';
+  
+  // Smooth streaming: Monitor video playback quality
+  video.addEventListener('waiting', () => {
+    console.log('Video buffering...');
+    status('Buffering stream...', 'connected');
+  });
+  
+  video.addEventListener('playing', () => {
+    console.log('Video playing smoothly');
+    status('Stream active - PH Optimized 🇵🇭 (2025)', 'connected');
+  });
+  
+  video.addEventListener('stalled', () => {
+    console.warn('Video stalled, attempting recovery');
+    if (networkQuality === 'good') {
+      networkQuality = 'medium';
+    }
+  });
+  
+  video.addEventListener('suspend', () => {
+    console.log('Video suspended');
+  });
+}
+function unlockMedia() {
+  if (!screenVideo || !screenVideo.srcObject) return;
+  
+  const video = screenVideo;
+  
+  // Ensure video is visible
+  video.style.opacity = '1';
+  video.style.visibility = 'visible';
+  video.style.display = 'block';
+  
+  // For receiving streams, unmute
+  if (video.muted) {
+    video.muted = false;
+    video.volume = 1.0;
+  }
+
+  const attemptPlay = () => {
+    if (!video.srcObject) return;
+    
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          console.log('Video playing successfully');
+          // Ensure video is visible after play
+          video.style.opacity = '1';
+          video.style.display = 'block';
+        })
+        .catch(err => {
+          console.warn('Video play failed, will retry on user interaction:', err);
+          // For mobile devices, ensure we try again on user interaction
+          const unlock = (e) => {
+            e.preventDefault();
+            video.play().catch(() => {});
+            document.removeEventListener('touchstart', unlock);
+            document.removeEventListener('touchend', unlock);
+            document.removeEventListener('click', unlock);
+          };
+          
+          document.addEventListener('touchstart', unlock, { once: true, passive: false });
+          document.addEventListener('touchend', unlock, { once: true, passive: false });
+          document.addEventListener('click', unlock, { once: true });
+        });
+    }
+  };
+
+  if (isIOS || isAndroid) {
+    // Mobile devices need user interaction
+    const unlock = (e) => {
+      e.preventDefault();
+      attemptPlay();
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('touchend', unlock);
+      document.removeEventListener('click', unlock);
+    };
+    
+    document.addEventListener('touchstart', unlock, { once: true, passive: false });
+    document.addEventListener('touchend', unlock, { once: true, passive: false });
+    document.addEventListener('click', unlock, { once: true });
+    
+    // Also try immediately if video is ready
+    if (video.readyState >= 2) {
+      attemptPlay();
+    } else {
+      video.addEventListener('loadeddata', attemptPlay, { once: true });
+      video.addEventListener('canplay', attemptPlay, { once: true });
+    }
+  } else {
+    // Desktop - try immediately
+    attemptPlay();
+  }
+  
+  // Handle video loading events
+  video.addEventListener('loadedmetadata', () => {
+    console.log('Video metadata loaded');
+    video.style.opacity = '1';
+  });
+  
+  video.addEventListener('loadeddata', () => {
+    console.log('Video data loaded');
+    video.style.opacity = '1';
+  });
+  
+  video.addEventListener('canplay', () => {
+    console.log('Video can play');
+    attemptPlay();
+  });
+}
+/* ---------- EXISTING FUNCTIONS (UPDATED FOR PERF/RESPONSIVE) ---------- */
+function hashRoomName(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = ((h << 5) - h) + name.charCodeAt(i);
+    h = h & h;
+  }
+  return 'ph_room_' + Math.abs(h).toString(36).substr(0, 12);
+}
+function createRoom() {
+  roomName = $('roomId').value.trim() || 'pinas';
+  if (!roomName) return alert('Enter room name');
+  cleanup();
+  isRoomCreator = true;
+  showRoomUI();
+  initPeer(hashRoomName(roomName));
+}
+function joinRoom() {
+  roomName = $('roomId').value.trim() || 'pinas';
+  if (!roomName) return alert('Enter room name');
+  cleanup();
+  isRoomCreator = false;
+  showRoomUI();
+  initPeer();
+  setTimeout(() => {
+    discoveryInterval = setInterval(discoverPeers, 4000); // Adjusted interval
+  }, 1000);
+}
+function showRoomUI() {
+  $('currentRoomName').textContent = roomName;
+  $('roomInfo').classList.remove('hidden');
+  $('screen-container').classList.remove('hidden');
+  // Hide mobile warning after room creation
+  if ($('mobileWarning')) $('mobileWarning').style.display = 'none';
+}
+function discoverPeers() {
+  if (!roomName || !peer || !peer.open || isRoomCreator) return;
+  const target = hashRoomName(roomName);
+  if (target !== myId && !peers.has(target)) {
+    connectToPeer(target);
+  }
+}
+function connectToPeer(id) {
+  if (peers.has(id) || id === myId || !peer || !peer.open) return;
+  const conn = peer.connect(id, {
+    reliable: true,
+    serialization: 'json'
+  });
+  setupPhilippinesConnection(conn);
+}
+function autoStartHDAudioShare() {
+  if (!isRoomCreator || isSharing || isMobile) return;
+  status('Auto-sharing in 3s...', 'connected');
+  autoShareTimeout = setTimeout(startSharing, 3000);
+}
+function stopSharing() {
+  // Smooth streaming: Stop quality monitoring for all connections
+  peers.forEach(conn => {
+    if (conn._statsInterval) {
+      clearInterval(conn._statsInterval);
+      conn._statsInterval = null;
+    }
+  });
+  if (statsInterval) {
+    clearInterval(statsInterval);
+    statsInterval = null;
+  }
+  
+  if (hostStream) {
+    hostStream.getTracks().forEach(track => {
+      track.stop();
+      track.onended = null;
+      track.onerror = null;
+    });
+  }
+  hostStream = null;
+  isSharing = false;
+  
+  // Reset network quality
+  networkQuality = 'good';
+  
+  if (screenPlaceholder) screenPlaceholder.classList.remove('hidden');
+  if (screenDisplay) screenDisplay.classList.add('hidden');
+  
+  if (screenVideo) {
+    screenVideo.srcObject = null;
+    screenVideo.pause();
+    // Remove event listeners
+    screenVideo.removeEventListener('waiting', () => {});
+    screenVideo.removeEventListener('playing', () => {});
+    screenVideo.removeEventListener('stalled', () => {});
+  }
+  
+  if (stopShareBtn) stopShareBtn.style.display = 'none';
+  if (startShareBtn) startShareBtn.classList.remove('hidden');
+  if (fullscreenBtn) fullscreenBtn.style.display = 'none';
+  
+  broadcast({ type: 'sharing_stopped' });
+  status('Sharing stopped', 'connected');
+}
+function status(txt, type = '') {
+  const statusEl = $('status');
+  statusEl.textContent = 'Status: ' + txt;
+  if (type === 'connected') statusEl.style.color = '#43b581';
+  else if (type === 'error') statusEl.style.color = '#f04747';
+  else statusEl.style.color = 'var(--text-muted)';
+}
+function updatePeerList() {
+  const container = $('peerList');
+  const list = $('peerItems');
+  if (!peers.size) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+  list.innerHTML = '';
+  peers.forEach((_, id) => {
+    const div = document.createElement('div');
+    div.className = 'peer-item';
+    div.textContent = id.slice(0, 8) + '...';
+    list.appendChild(div);
+  });
+}
+function broadcast(obj) {
+  peers.forEach(conn => conn.open && conn.send(obj));
+}
+function cleanup() {
+  if (autoShareTimeout) clearTimeout(autoShareTimeout);
+  if (discoveryInterval) clearInterval(discoveryInterval);
+  if (hostStream) hostStream.getTracks().forEach(track => track.stop());
+  if (peer) peer.destroy();
+  peers.clear();
+  updatePeerList();
+}
+function getFullscreenElement() {
+  return document.fullscreenElement || 
+         document.webkitFullscreenElement || 
+         document.mozFullScreenElement || 
+         document.msFullscreenElement || 
+         null;
+}
+
+function toggleFullscreen() {
+  const elem = screenDisplay;
+  if (!elem || !fullscreenBtn) return;
+  
+  const isFullscreen = !!getFullscreenElement();
+  
+  if (!isFullscreen) {
+    // Enter fullscreen
+    const requestFullscreen = elem.requestFullscreen ||
+                             elem.webkitRequestFullscreen ||
+                             elem.mozRequestFullScreen ||
+                             elem.msRequestFullscreen;
+    
+    if (requestFullscreen) {
+      requestFullscreen.call(elem).then(() => {
+        updateFullscreenButton(true);
+      }).catch(err => {
+        console.error('Error entering fullscreen:', err);
+        status('Fullscreen not supported', 'error');
+      });
+    } else {
+      status('Fullscreen not supported on this device', 'error');
+    }
+  } else {
+    // Exit fullscreen
+    const exitFullscreen = document.exitFullscreen ||
+                          document.webkitExitFullscreen ||
+                          document.mozCancelFullScreen ||
+                          document.msExitFullscreen;
+    
+    if (exitFullscreen) {
+      exitFullscreen.call(document).then(() => {
+        updateFullscreenButton(false);
+      }).catch(err => {
+        console.error('Error exiting fullscreen:', err);
+      });
+    }
+  }
+}
+
+function updateFullscreenButton(isFullscreen) {
+  if (!fullscreenBtn) return;
+  fullscreenBtn.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+}
+
+// Listen for fullscreen changes
+function setupFullscreenListeners() {
+  const events = [
+    'fullscreenchange',
+    'webkitfullscreenchange',
+    'mozfullscreenchange',
+    'MSFullscreenChange'
+  ];
+  
+  events.forEach(event => {
+    document.addEventListener(event, () => {
+      updateFullscreenButton(!!getFullscreenElement());
+    });
+  });
+}
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize DOM element references
+  if (!initDOMElements()) {
+    console.error('Failed to initialize DOM elements');
+    return;
+  }
+  
+  // Initialize video element
+  if (screenVideo) {
+    optimizeVideoElement();
+    
+    // Handle video errors
+    screenVideo.addEventListener('error', (e) => {
+      console.error('Video error:', e);
+      status('Video error occurred', 'error');
+      if (screenPlaceholder) {
+        screenPlaceholder.classList.remove('hidden');
+        screenDisplay.classList.add('hidden');
+      }
+    });
+    
+    // Handle video loading
+    screenVideo.addEventListener('loadstart', () => {
+      console.log('Video loading started');
+      if (screenVideo) {
+        screenVideo.style.opacity = '0.8';
+      }
+    });
+    
+    screenVideo.addEventListener('loadedmetadata', () => {
+      console.log('Video metadata loaded');
+      if (screenVideo) {
+        screenVideo.style.opacity = '1';
+      }
+    });
+  }
+  
+  // Setup fullscreen listeners
+  setupFullscreenListeners();
+  
+  // Setup room input
+  const roomInput = $('roomId');
+  if (roomInput) {
+    roomInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') {
+        createRoom();
+      }
+    });
+  }
+  
+  // Handle page unload
+  window.addEventListener('beforeunload', cleanup);
+  window.addEventListener('pagehide', cleanup);
+  
+  // Responsive: Handle orientation change
+  window.addEventListener('resize', () => {
+    if (screenVideo && screenVideo.videoWidth > 0) {
+      screenVideo.style.height = 'auto';
+    }
+  });
+  
+  // Handle orientation change on mobile
+  window.addEventListener('orientationchange', () => {
+    setTimeout(() => {
+      if (screenVideo && screenVideo.srcObject) {
+        // Force video to re-layout
+        const currentSrc = screenVideo.srcObject;
+        screenVideo.srcObject = null;
+        setTimeout(() => {
+          screenVideo.srcObject = currentSrc;
+          if (screenVideo.paused) {
+            screenVideo.play().catch(() => {});
+          }
+        }, 100);
+      }
+    }, 500);
+  });
+  
+  console.log('goStream initialized successfully');
+});
+
+// Fallback initialization if DOMContentLoaded already fired
+if (document.readyState === 'loading') {
+  // DOMContentLoaded has not fired yet
+} else {
+  // DOMContentLoaded has already fired
+  setTimeout(() => {
+    if (!screenVideo) {
+      if (initDOMElements() && screenVideo) {
+        optimizeVideoElement();
+        setupFullscreenListeners();
+      }
+    }
+  }, 0);
+}
+</script>
+</body>
+</html>
